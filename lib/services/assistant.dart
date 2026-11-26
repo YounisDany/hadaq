@@ -14,7 +14,10 @@ class AssistantReply {
   final String answer;
   final String? label; // short object label for the chip, e.g. «علبة دواء»
   final List<String> suggestions; // quick spoken replies, e.g. «اقرأ النشرة»
-  const AssistantReply(this.answer, {this.label, this.suggestions = const []});
+  /// What the app should DO for a request its rules didn't catch:
+  /// {"type": "call", "who": "…"}، {"type": "message", …}، {"type": "camera", …}…
+  final Map<String, dynamic>? action;
+  const AssistantReply(this.answer, {this.label, this.suggestions = const [], this.action});
 }
 
 /// The smart assistant (scene description, OCR, open questions) via the Gemini API.
@@ -30,13 +33,14 @@ class AssistantService {
   bool get configured => apiKey.isNotEmpty || (backend?.enabled ?? false);
 
   Future<AssistantReply> _viaBackend(String question, Uint8List? imageJpeg, String? userContext,
-      List<(String, String)> history) async {
+      List<(String, String)> history, bool actions) async {
     try {
       final text = await backend!.ask(
         question: question,
         imageB64: imageJpeg != null ? base64Encode(imageJpeg) : null,
         userContext: userContext,
         history: history,
+        actions: actions,
       );
       return parseReply(text);
     } on BackendError catch (e) {
@@ -70,8 +74,9 @@ class AssistantService {
     Uint8List? imageJpeg,
     String? userContext,
     List<(String, String)> history = const [],
+    bool actions = false,
   }) async {
-    if (backend?.enabled ?? false) return _viaBackend(question, imageJpeg, userContext, history);
+    if (backend?.enabled ?? false) return _viaBackend(question, imageJpeg, userContext, history, actions);
     if (!configured) {
       return const AssistantReply(
           'لم يُضبط مفتاح المساعد الذكي بعد. يحتاج المطوّر إلى إضافة مفتاح Gemini عند بناء التطبيق.');
@@ -140,6 +145,9 @@ class AssistantService {
         (m['answer'] as String? ?? '').trim(),
         label: (label == null || label.isEmpty) ? null : label,
         suggestions: ((m['suggestions'] as List?) ?? []).map((e) => '$e').take(3).toList(),
+        action: m['action'] is Map && (m['action'] as Map)['type'] is String && (m['action'] as Map)['type'] != 'none'
+            ? Map<String, dynamic>.from(m['action'] as Map)
+            : null,
       );
     } catch (_) {
       return AssistantReply(t.isEmpty ? 'لم أفهم الرد. حاول مرة أخرى.' : t);

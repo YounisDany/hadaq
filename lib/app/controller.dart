@@ -329,8 +329,10 @@ class HadaqController extends ChangeNotifier {
         await _say('لم أسمع.', phase: Phase.idle, show: false);
         return;
       }
+      fx.startThinking(); // keeps ticking until the reply starts (_say stops it)
       await handle(text);
     } finally {
+      fx.stopThinking();
       _busy = false;
     }
   }
@@ -372,7 +374,7 @@ class HadaqController extends ChangeNotifier {
                 ? 1
                 : 2);
       case IntentType.ride:
-        return _ride(intent.arg);
+        return _ride(intent.arg, destName: intent.options.firstOrNull);
       case IntentType.walkAnyway:
         final t = (_pending?.data is NearbyPlace ? _pending!.data as NearbyPlace : null) ?? _lastTarget;
         _pending = null;
@@ -390,7 +392,7 @@ class HadaqController extends ChangeNotifier {
         _pending = const _Pending('wipe');
         return await _say('هل تريد أن أمسح كل ما أتذكره عنك؟ قل نعم أو لا.', phase: Phase.answer);
       case IntentType.vision:
-        return _vision(text);
+        return _visionAsked(text);
       case IntentType.nearby:
         return _nearby(intent.arg!);
       case IntentType.whereAmI:
@@ -398,17 +400,19 @@ class HadaqController extends ChangeNotifier {
       case IntentType.savedPlace:
         return _toSavedPlace(intent.arg!);
       case IntentType.startGuidance:
+        if (intent.options.contains('gmaps')) return _openGoogleMaps(intent.arg);
         return _startGuidanceFromText(intent.arg);
       case IntentType.remaining:
         return _remaining();
       case IntentType.nextResult:
         return _nextResult();
       case IntentType.call:
-        return _call(intent.arg ?? '');
+        return _call(intent.arg ?? '', service: intent.options.firstOrNull);
       case IntentType.setup:
         return runSetup();
       case IntentType.message:
-        return _message(intent.arg ?? '', intent.options.isNotEmpty ? intent.options.first : 'whatsapp');
+        return _message(intent.arg ?? '', intent.options.isNotEmpty ? intent.options.first : 'whatsapp',
+            textOnly: intent.options.contains('textOnly'));
       case IntentType.enableAutoSend:
         return _enableAutoSend();
       case IntentType.openApp:
@@ -451,15 +455,80 @@ class HadaqController extends ChangeNotifier {
 
   Future<void> _question(String text) async {
     _thinking();
+    AssistantReply r;
     try {
-      final r = await assistant.ask(text, userContext: _userContext(), history: _history);
-      _remember(text, r.answer);
-      await _reply(r);
+      // actions: the assistant may answer with something to DO (call, message, camera…)
+      // for requests the rules above didn't recognise, instead of «لا يمكنني».
+      r = await assistant.ask(text, userContext: _userContext(), history: _history, actions: true);
     } on OfflineException {
-      _queueOffline(text);
-    } finally {
       fx.stopThinking();
+      return _queueOffline(text);
     }
+    fx.stopThinking();
+    final a = r.action;
+    if (a != null) {
+      debugPrint('[hadaq] assistant action: $a');
+      if (await _runAction(a, text)) return;
+    }
+    _remember(text, r.answer);
+    await _reply(r);
+  }
+
+  /// Carries out an action the assistant chose. false = not something the app can do.
+  Future<bool> _runAction(Map<String, dynamic> a, String text) async {
+    String s(String k) => '${a[k] ?? ''}'.trim();
+    switch (a['type']) {
+      case 'call':
+        await _call(s('who'));
+      case 'emergency_call':
+        await _call('__emergency__', service: s('service').isEmpty ? null : normalizeAr(s('service')).replaceFirst('ال', ''));
+      case 'message':
+        final who = s('who'), msg = s('text');
+        final channel = s('channel') == 'sms' ? 'sms' : 'whatsapp';
+        if (who.isEmpty) {
+          await _message(msg, channel, textOnly: true);
+        } else {
+          await _message(msg.isEmpty ? who : '$who قل له $msg', channel);
+        }
+      case 'open_app':
+        if (s('app').isEmpty) return false;
+        await _openApp(s('app'));
+      case 'places':
+        if (s('place').isEmpty) return false;
+        if (a['go'] == true) {
+          await _startGuidanceFromText(s('place'));
+        } else {
+          await _nearby(s('place'));
+        }
+      case 'maps':
+        await _openGoogleMaps(s('place').isEmpty ? null : s('place'));
+      case 'ride':
+        final app = normalizeAr(s('app'));
+        final key = app.contains('كريم') || app.contains('careem')
+            ? 'careem'
+            : app.contains('بولت') || app.contains('bolt')
+                ? 'bolt'
+                : app.contains('جيني')
+                    ? 'jeeny'
+                    : app.contains('وصلني')
+                        ? 'wasalni'
+                        : null;
+        await _ride(key, destName: s('place').isEmpty ? null : s('place'));
+      case 'camera':
+        final ok = await _confirm('أفتح الكاميرا وأصوّر ما أمامك؟');
+        if (ok == true) {
+          await _vision(s('question').isEmpty ? text : s('question'));
+        } else {
+          await _say('حسنًا.', phase: Phase.answer);
+        }
+      case 'memory':
+        await _showMemory();
+      case 'where_am_i':
+        await _whereAmI();
+      default:
+        return false;
+    }
+    return true;
   }
 
   Future<void> _vision(String text, {bool reuseImage = false}) async {
@@ -693,6 +762,12 @@ class HadaqController extends ChangeNotifier {
     await _applyVoiceSettings();
     await fx.cue(Cue.saved);
     await _say('تراجعت عن آخر تغيير.', phase: Phase.answer);
+  }
+
+  /// Screenshot/testing only: shows [t] as the current answer.
+  void demoAnswer(String t) {
+    answer = t;
+    notifyListeners();
   }
 
   Future<void> _showMemory() async {
@@ -1309,6 +1384,7 @@ class HadaqController extends ChangeNotifier {
       if (audio == null) return '';
       heard = '…';
       notifyListeners();
+      fx.startThinking(); // waiting tone while the words are transcribed
       try {
         final names = [
           ...memory.data.people.map((p) => p.name),
@@ -1316,11 +1392,13 @@ class HadaqController extends ChangeNotifier {
           if (memory.data.name != null) memory.data.name!,
         ].take(15).join('، ');
         final text = await backend.transcribe(audio, hint: names.isEmpty ? null : names);
+        fx.stopThinking();
         _cloudSttFailures = 0;
         heard = text;
         notifyListeners();
         return text;
       } catch (_) {
+        fx.stopThinking();
         _cloudSttFailures++;
         // Network/server trouble: fall back to the phone's recogniser for this turn.
       }
@@ -1338,29 +1416,115 @@ class HadaqController extends ChangeNotifier {
 
   /// Opens Uber with the destination filled in (or Careem). The user confirms
   /// the ride in that app; Hadaq never books or pays on its own.
-  Future<void> _ride(String? app, {NearbyPlace? target}) async {
-    final t = target ?? _lastTarget;
-    if (t == null) {
-      return await _say('إلى أين تريد السيارة؟ اسألني عن المكان أولًا، مثلًا: أين أقرب مستشفى؟', phase: Phase.answer);
+  /// Finds a place by name or kind near the user (first result). Speaks the problem itself.
+  Future<NearbyPlace?> _findPlace(String query) async {
+    final q = normalizeAr(query);
+    for (final p in memory.data.places) {
+      final n = normalizeAr(p.name);
+      if (q.contains(n) || n.contains(q)) return NearbyPlace(p.name, p.lat, p.lon, 0, 0);
     }
+    _thinking();
+    try {
+      final pos = await location.current();
+      if (pos == null) {
+        await _say('لا أستطيع تحديد موقعك. فعّل خدمة الموقع واسمح لحدق باستخدامه.', phase: Phase.answer);
+        return null;
+      }
+      final found = await backend.searchPlaces(query, pos.latitude, pos.longitude);
+      if (found.isEmpty) {
+        await _say('لم أجد $query قريبًا منك. قل اسم المكان بطريقة أخرى.', phase: Phase.answer);
+        return null;
+      }
+      final f = found.first;
+      return NearbyPlace(f.name, f.lat, f.lon, f.distance, f.bearing);
+    } catch (_) {
+      await _say('تعذّر البحث عن المكان الآن.', phase: Phase.answer);
+      return null;
+    } finally {
+      fx.stopThinking();
+    }
+  }
+
+  /// «افتح خرائط جوجل ووجهني إلى…»: hands walking navigation to Google Maps,
+  /// which reads every turn aloud on its own.
+  Future<void> _openGoogleMaps(String? dest) async {
+    NearbyPlace? t;
+    if (dest != null && dest.trim().isNotEmpty) {
+      t = await _findPlace(dest);
+      if (t == null) return;
+    } else {
+      t = _lastTarget;
+      if (t == null) {
+        final a = await _listenFor('إلى أين تريد أن تذهب؟');
+        if (a == null) return _openApp('خرائط');
+        t = await _findPlace(a);
+        if (t == null) return;
+      }
+    }
+    _lastTarget = t;
+    await _say('أفتح خرائط جوجل للمشي إلى ${t.name}، وستقرأ عليك الاتجاهات.', phase: Phase.answer);
+    final ok = await _launch('google.navigation:q=${t.lat},${t.lon}&mode=w') ||
+        await _launch('https://www.google.com/maps/dir/?api=1&destination=${t.lat},${t.lon}&travelmode=walking');
+    if (!ok) await _say('تعذّر فتح خرائط جوجل. أستطيع أن أرشدك بنفسي: قل امشيني.', phase: Phase.answer);
+  }
+
+  /// Ride apps by package; Uber also takes the destination in its link.
+  static const _rideApps = {
+    'uber': ('أوبر', 'com.ubercab'),
+    'careem': ('كريم', 'com.careem.acma'),
+    'bolt': ('بولت', 'ee.mtakso.client'),
+    'jeeny': ('جيني', 'me.com.easytaxi'),
+    'wasalni': ('وصلني', ''),
+  };
+
+  /// «اطلب سيارة (إلى المستشفى)»: where to → confirm → opens the ride app ready to book.
+  /// The user still reviews the price and confirms inside the app (payment is theirs).
+  Future<void> _ride(String? app, {NearbyPlace? target, String? destName}) async {
     _pending = null;
-    if (app == 'careem') {
-      await _say('أفتح لك تطبيق كريم. اكتب أو قل الوجهة فيه: ${t.name}.', phase: Phase.answer);
-      final ok = await _launch('careem://') || await _launch('market://details?id=com.careem.acma');
-      if (!ok) await _say('لم أجد تطبيق كريم على جوالك.', phase: Phase.answer);
+    var t = target;
+    if (t == null && destName != null && destName.isNotEmpty) t = await _findPlace(destName);
+    if (t == null && destName == null) {
+      t = _lastTarget;
+      if (t == null) {
+        final a = await _listenFor('إلى أين تريد الذهاب بالسيارة؟');
+        if (a == null) return await _say('ألغيت الطلب.', phase: Phase.answer);
+        t = await _findPlace(a);
+      }
+    }
+    if (t == null) return;
+    final (label, pkg) = _rideApps[app ?? 'uber']!;
+    final ok = await _confirm('أطلب سيارة من $label إلى ${t.name}؟');
+    if (ok != true) return await _say('حسنًا، لم أطلب.', phase: Phase.answer);
+    _lastTarget = t;
+
+    if (app == null || app == 'uber') {
+      final uber = Uri.https('m.uber.com', '/ul/', {
+        'action': 'setPickup',
+        'pickup': 'my_location',
+        'dropoff[latitude]': '${t.lat}',
+        'dropoff[longitude]': '${t.lon}',
+        'dropoff[nickname]': t.name,
+      });
+      await _say('أفتح أوبر والوجهة ${t.name} جاهزة. راجع السعر واضغط تأكيد الطلب أسفل الشاشة.', phase: Phase.answer);
+      if (!await _launch(uber.toString())) await _say('تعذّر فتح أوبر. قل: اطلب كريم، أو اطلب بولت.', phase: Phase.answer);
       return;
     }
-    final uber = Uri.https('m.uber.com', '/ul/', {
-      'action': 'setPickup',
-      'pickup': 'my_location',
-      'dropoff[latitude]': '${t.lat}',
-      'dropoff[longitude]': '${t.lon}',
-      'dropoff[nickname]': t.name,
-    });
-    await _say('أفتح لك أوبر، والوجهة ${t.name} جاهزة. راجع السعر وأكّد الطلب من التطبيق.', phase: Phase.answer);
-    if (!await _launch(uber.toString())) {
-      await _say('تعذّر فتح أوبر. ثبّت التطبيق أو قل: كريم.', phase: Phase.answer);
+    // Other apps can't take the destination from outside: copy it so the user can paste it.
+    await Clipboard.setData(ClipboardData(text: t.name));
+    await _say('أفتح $label. الوجهة ${t.name} منسوخة: الصقها في خانة إلى أين.', phase: Phase.answer);
+    final opened = pkg.isNotEmpty && await NativeBridge.openApp(pkg);
+    if (!opened) await _openApp(label);
+  }
+
+  /// Vision requests: when the user asked for a picture outright («صوّر»، «ما أمامي»)
+  /// the camera opens at once; when it's only implied («كم معي من النقود») ask first.
+  Future<void> _visionAsked(String text) async {
+    final explicit = RegExp(r'(الكاميرا|كاميرا|صور|التقط|امامي|قدامي|صف لي|صف المكان|ماذا تري|وش تشوف)').hasMatch(normalizeAr(text));
+    if (!explicit) {
+      final ok = await _confirm('أفتح الكاميرا وأصوّر ما أمامك؟');
+      if (ok != true) return await _say('حسنًا.', phase: Phase.answer);
     }
+    return _vision(text);
   }
 
   Future<bool> _launch(String url) async {
@@ -1397,34 +1561,41 @@ class HadaqController extends ChangeNotifier {
 
   /// «ارسل لأحمد واتساب قل له إني في الطريق»: find the contact, get the text
   /// (asks for it if missing), read it back, and send only after «نعم».
-  Future<void> _message(String rest, String channel) async {
-    // Who? Try the first 1–3 words as the name; keep the best phonebook match.
+  Future<void> _message(String rest, String channel, {bool textOnly = false}) async {
     ContactMatch? who;
-    var text = '';
-    _thinking();
-    try {
-      final direct = RegExp(r'^\+?[\d\s]{7,}').firstMatch(toLatinDigits(rest));
-      if (direct != null) {
-        final n = direct.group(0)!.replaceAll(' ', '');
-        who = ContactMatch(n.split('').join(' '), n, 9);
-        text = Messaging.cleanMessage(rest.substring(direct.end));
-      } else {
-        for (final (name, msg) in Messaging.candidates(rest)) {
-          final saved = memory.data.people.where((p) => normalizeAr(p.name) == normalizeAr(name)).firstOrNull;
-          final found = saved != null ? [ContactMatch(saved.name, saved.phone, 5)] : await phone.find(name);
-          if (found.isEmpty) continue;
-          if (who == null || found.first.score >= who.score) {
-            who = found.first;
-            text = msg;
+    var text = textOnly ? rest.trim() : '';
+    if (!textOnly && rest.trim().isNotEmpty) {
+      // Who? Try the first 1–3 words as the name; keep the best phonebook match.
+      _thinking();
+      try {
+        final direct = RegExp(r'^\+?[\d\s]{7,}').firstMatch(toLatinDigits(rest));
+        if (direct != null) {
+          final n = direct.group(0)!.replaceAll(' ', '');
+          who = ContactMatch(n.split('').join(' '), n, 9);
+          text = Messaging.cleanMessage(rest.substring(direct.end));
+        } else {
+          for (final (name, msg) in Messaging.candidates(rest)) {
+            final saved = memory.data.people.where((p) => normalizeAr(p.name) == normalizeAr(name)).firstOrNull;
+            final found = saved != null ? [ContactMatch(saved.name, saved.phone, 5)] : await phone.find(name);
+            if (found.isEmpty) continue;
+            if (who == null || found.first.score >= who.score) {
+              who = found.first;
+              text = msg;
+            }
           }
         }
+      } finally {
+        fx.stopThinking();
       }
-    } finally {
-      fx.stopThinking();
+      // No exact match: let the user pick from the closest names.
+      who ??= await _resolveContact(Messaging.candidates(rest).firstOrNull?.$1 ?? rest);
+      if (who == null) return;
     }
-    final first = Messaging.candidates(rest).firstOrNull?.$1 ?? rest;
     if (who == null) {
-      return await _say('لم أجد $first في جهات اتصالك. قل الاسم كما هو محفوظ في جوالك.', phase: Phase.answer);
+      final t = await _listenFor(text.isEmpty ? 'لمن تريد أن ترسل؟' : 'لمن أرسل: $text؟');
+      if (t == null) return await _say('ألغيت الرسالة.', phase: Phase.answer);
+      who = await _resolveContact(t);
+      if (who == null) return;
     }
     if (text.isEmpty) {
       final t = await _listenFor('ماذا تريد أن تقول لـ ${who.name}؟');
@@ -1432,12 +1603,9 @@ class HadaqController extends ChangeNotifier {
       text = Messaging.cleanMessage(t);
     }
     final d = _Draft(who.name, who.number, text, channel);
-    _pending = _Pending('sendMsg', d);
-    suggestions = const ['نعم', 'لا'];
-    await _say(
-      'سأرسل إلى ${who.name}${channel == 'sms' ? ' رسالة نصية' : ' على واتساب'}: $text. هل أرسل؟',
-      phase: Phase.answer,
-    );
+    final ok = await _confirm('سأرسل إلى ${who.name}${channel == 'sms' ? ' رسالة نصية' : ' على واتساب'}: $text. أرسل؟');
+    if (ok == true) return _sendDraft(d);
+    await _say(ok == false ? 'حسنًا، لم أرسلها.' : 'لم أسمع تأكيدًا، فلم أرسلها.', phase: Phase.answer);
   }
 
   /// Speaks [question] and returns what the user says next (null if nothing).
@@ -1533,15 +1701,34 @@ class HadaqController extends ChangeNotifier {
 
   // ================= Calls =================
 
-  /// «اتصل بأحمد» — saved people first, then the phone's contacts.
-  Future<void> _call(String who) async {
-    if (RegExp(r'^\+?\d{3,}$').hasMatch(who)) return _placeCall(who.split('').join(' '), who);
-    final w = normalizeAr(who);
+  /// Asks a yes/no question and listens straight away (no tap needed).
+  /// true / false, or null if there was no clear answer after one retry.
+  Future<bool?> _confirm(String question) async {
+    for (var attempt = 0; attempt < 2; attempt++) {
+      final t = await _listenFor(attempt == 0 ? question : 'لم أسمع جيدًا. قل نعم أو لا.');
+      if (t == null) continue;
+      final type = IntentClassifier().classify(t).type;
+      if (type == IntentType.yes) return true;
+      if (type == IntentType.no || type == IntentType.stop) return false;
+    }
+    return null;
+  }
+
+  /// Finds the person the user means: saved people first, then the phonebook
+  /// (Arabic or English spelling). Asks which one when several match, and offers
+  /// the closest names when nothing matches exactly. null = gave up.
+  Future<ContactMatch?> _resolveContact(String spoken) async {
+    var who = spoken.trim().replaceFirst(RegExp(r'^(?:اتصل|كلم|ارسل|ابعث)\s*(?:ب|على|ل|الى|إلى)?\s*'), '');
+    if (RegExp(r'^\+?[\d\s]{3,}$').hasMatch(toLatinDigits(who))) {
+      final n = toLatinDigits(who).replaceAll(' ', '');
+      return ContactMatch(n.split('').join(' '), n, 9);
+    }
+    final w = normalizeAr(who).replaceFirst(RegExp(r'^[بل](?=\S{2,})'), '');
     final saved = memory.data.people.where((p) {
       final n = normalizeAr(p.name);
       return n == w || n.startsWith(w) || w.endsWith(n);
     }).toList();
-    if (saved.length == 1) return _placeCall(saved.first.name, saved.first.phone);
+    if (saved.length == 1) return ContactMatch(saved.first.name, saved.first.phone, 5);
 
     _thinking();
     List<ContactMatch> found;
@@ -1550,24 +1737,90 @@ class HadaqController extends ChangeNotifier {
     } finally {
       fx.stopThinking();
     }
-    if (found.isEmpty) {
-      return await _say('لم أجد $who في جهات اتصالك. قل الاسم كما هو محفوظ، أو قل: اتصل على، ثم الرقم.',
-          phase: Phase.answer);
+    var top = found.where((m) => m.score == (found.isEmpty ? 0 : found.first.score)).take(3).toList();
+    if (top.isEmpty) {
+      // Nothing exact: offer the closest-sounding names.
+      top = await phone.suggest(who);
+      if (top.isEmpty) {
+        await _say('لم أجد $who في جهات اتصالك. قل الاسم كما هو محفوظ في جوالك، أو قل الرقم.', phase: Phase.answer);
+        return null;
+      }
+      if (top.length == 1) {
+        final ok = await _confirm('لم أجد $who. هل تقصد ${top.first.name}؟');
+        return ok == true ? top.first : null;
+      }
+      return _pickContact(top, 'لم أجد $who. هل تقصد ${top.map((m) => m.name).join('، أو ')}؟');
     }
-    final top = found.where((m) => m.score == found.first.score).toList();
-    if (top.length == 1) return _placeCall(top.first.name, top.first.number);
+    if (top.length == 1) return top.first;
+    return _pickContact(top, 'عندي ${top.map((m) => m.name).join('، و')}. أيّهم تقصد؟');
+  }
 
-    _callChoices = top.take(2).toList();
-    clarifyOptions = [for (final m in _callChoices) m.name];
-    await fx.cue(Cue.error);
-    await _say('عندي أكثر من شخص بهذا الاسم: ${_callChoices[0].name}، أو ${_callChoices[1].name}. قل الأول أو الثاني.',
-        phase: Phase.clarify, show: false);
+  /// Lets the user pick one of a few contacts by voice: «الأول»، «الثاني»، or the name itself.
+  Future<ContactMatch?> _pickContact(List<ContactMatch> options, String question) async {
+    clarifyOptions = [for (final m in options) m.name];
+    final t = await _listenFor(question);
+    clarifyOptions = [];
+    if (t == null) return null;
+    final i = IntentClassifier().classify(t).type;
+    if (i == IntentType.choiceFirst) return options[0];
+    if (i == IntentType.choiceSecond && options.length > 1) return options[1];
+    if (i == IntentType.choiceThird && options.length > 2) return options[2];
+    if (i == IntentType.yes && options.length == 1) return options[0];
+    final said = normalizeAr(t);
+    for (final m in options) {
+      final n = normalizeAr(m.name);
+      if (said.contains(n) || n.contains(said) || PhoneService.sameSound(said, n)) return m;
+    }
+    await _say('لم أفهم أيّهم. قل الاسم مرة أخرى.', phase: Phase.answer);
+    return null;
+  }
+
+  /// «اتصل بأحمد» → «أتصل بأحمد؟» → «نعم» → calls. «اتصل» alone asks who first.
+  Future<void> _call(String who, {String? service}) async {
+    if (who == '__emergency__') return _callEmergency(service);
+    if (who.trim().isEmpty) {
+      final t = await _listenFor('بمن تريد أن تتصل؟');
+      if (t == null) return await _say('ألغيت الاتصال.', phase: Phase.answer);
+      who = t;
+    }
+    final m = await _resolveContact(who);
+    if (m != null) await _confirmCall(m.name, m.number);
+  }
+
+  Future<void> _confirmCall(String name, String number) async {
+    final ok = await _confirm('أتصل بـ $name؟');
+    if (ok == true) return _placeCall(name, number);
+    await _say(ok == false ? 'حسنًا، لن أتصل.' : 'لم أسمع تأكيدًا، فلم أتصل.', phase: Phase.answer);
   }
 
   Future<void> _placeCall(String name, String number) async {
-    await _say('أتصل الآن بـ $name.', phase: Phase.answer);
+    await _say('أتصل الآن.', phase: Phase.answer);
     final ok = await phone.call(number);
     if (!ok) await _say('تعذّر الاتصال. تأكد من السماح لحدق بإجراء المكالمات.', phase: Phase.answer);
+  }
+
+  /// «اتصل بالطوارئ»: the saved emergency contact; «الإسعاف/الشرطة»: the official number.
+  /// If no emergency contact is saved yet, asks for one, saves it, then calls.
+  Future<void> _callEmergency(String? service) async {
+    final official = backend.config.emergencyNumber;
+    if (service != null) {
+      final label = {'اسعاف': 'الإسعاف', 'شرطه': 'الشرطة', 'دفاع المدني': 'الدفاع المدني'}[service] ?? 'الطوارئ';
+      return _confirmCall('$label على الرقم ${official.split('').join(' ')}', official);
+    }
+    final saved = memory.data.emergencyContacts;
+    if (saved.isNotEmpty) return _confirmCall(saved.first.name, saved.first.phone);
+    final t = await _listenFor('لا يوجد رقم طوارئ محفوظ. قل رقم الطوارئ، أو اسم الشخص من جهات اتصالك.');
+    if (t == null) return await _say('لم أحفظ شيئًا. ولطوارئ الدولة اتصل بـ $official.', phase: Phase.answer);
+    final m = await _resolveContact(t);
+    if (m == null) return;
+    final person = Person(m.score == 9 ? 'رقم الطوارئ' : m.name, m.number.replaceAll(' ', ''));
+    await memory.update((d) {
+      d.people.removeWhere((x) => x.phone == person.phone);
+      d.people.add(person);
+    });
+    await fx.cue(Cue.saved);
+    await _say('حفظته رقمًا للطوارئ.', phase: Phase.answer);
+    return _confirmCall(person.name, person.phone);
   }
 
   // ================= SOS =================

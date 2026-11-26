@@ -106,9 +106,44 @@ class IntentClassifier {
 
   IntentClassifier({this.savedPlaceNames = const []});
 
+  /// «نعم» heard by a recogniser that slipped into another language: «Nam», «Naam», «Ναι», «yes».
+  static final _foreignYes = RegExp(r"^(nam|naam|na'am|naem|nem|ναι|yes|yeah|yep|ok|okay)$", caseSensitive: false);
+
+  /// Rewrites polite / verbal-noun phrasings into the plain imperative the rules
+  /// below understand: «قم بالاتصال بأحمد» → «اتصل باحمد»، «هل يمكنك فتح وصلني» →
+  /// «افتح وصلني»، «أريد أن أرسل رسالة» → «ارسل رساله».
+  static String canonical(String t) {
+    var s = t;
+    for (var i = 0; i < 2; i++) {
+      s = s
+          .replaceFirst(RegExp(r'^(?:لو سمحت|من فضلك|رجاء|طيب|يلا|الحين|الان)\s+'), '')
+          .replaceFirst(RegExp(r'^(?:هل )?(?:يمكنك|يمكن|ممكن|تقدر|تستطيع|بامكانك|تقدري|ممكن انك)\s+(?:ان\s+)?'), '')
+          .replaceFirst(RegExp(r'^(?:اريد|ابي|ابغي|ابغا|ودي|احتاج|اود)\s+(?:ان\s+)?(?=(?:اتصل|اكلم|افتح|ارسل|ابعث|اطلب|اروح|اذهب|الاتصال|ارسال|فتح|طلب|اعرف موقع)(?: |$))'), '')
+          .replaceFirst(RegExp(r'^قم\s+(?:ب)?'), '');
+    }
+    // Verbal nouns → imperatives (also after «قم ب»).
+    const nouns = {
+      'الاتصال': 'اتصل', 'اتصال': 'اتصل', 'بالاتصال': 'اتصل', 'اكلم': 'كلم', 'مكالمه': 'اتصل',
+      'فتح': 'افتح', 'بفتح': 'افتح', 'تفتح': 'افتح', 'تفتحلي': 'افتح لي', 'افتحلي': 'افتح لي',
+      'ارسال': 'ارسل', 'بارسال': 'ارسل', 'ترسل': 'ارسل', 'ترسلي': 'ارسل', 'ارسلي': 'ارسل',
+      'طلب': 'اطلب', 'بطلب': 'اطلب', 'تطلب': 'اطلب',
+      'توجيهي': 'وجهني', 'توجيهه': 'وجهني', 'بتوجيهي': 'وجهني', 'ارشادي': 'ارشدني', 'بارشادي': 'ارشدني',
+      'ايصالي': 'وديني', 'تحديد': 'حدد', 'بتحديد': 'حدد',
+    };
+    final w = s.split(' ');
+    if (w.isNotEmpty && nouns.containsKey(w.first)) {
+      w[0] = nouns[w.first]!;
+      s = w.join(' ');
+    }
+    return s;
+  }
+
   Intent classify(String raw) {
     // Drop the wake phrase ("يا حدق، ...") so it doesn't affect matching.
-    final t = normalizeAr(raw).replaceFirst(RegExp(r'^(يا )?حدق\s*'), '');
+    if (_foreignYes.hasMatch(raw.trim().replaceAll(RegExp(r'[.!?؟,،]'), '').trim())) {
+      return Intent(IntentType.yes, text: raw);
+    }
+    final t = canonical(normalizeAr(raw).replaceFirst(RegExp(r'^(يا )?حدق\s*'), ''));
     if (t.isEmpty) return Intent(IntentType.unclear, confidence: 0, text: raw);
     final words = t.split(' ');
 
@@ -134,7 +169,8 @@ class IntentClassifier {
       if (RegExp(r'^(الثالث|الخيار الثالث|رقم 3|3|ثلاثه)$').hasMatch(t)) {
         return Intent(IntentType.choiceThird, text: raw);
       }
-      if (RegExp(r'^(نعم|ايوه|اي|اكيد|تمام|طيب|موافق|ابدا|نعم ابدا|اقرا|اقراها|اقرا النشره)$')
+      if (RegExp(r'^(نعم|ايوه|ايوا|ايه|اي|اكيد|تمام|طيب|موافق|اوكي|اوك|يب|صح|ابدا|نعم ابدا|اقرا|اقراها|اقرا النشره)'
+              r'( (ارسل|ارسلها|اتصل|اتصل به|اتصل بها|صور|افتح|تمام|اكيد|نعم|اطلب))?$')
           .hasMatch(t)) {
         return Intent(IntentType.yes, text: raw);
       }
@@ -171,6 +207,15 @@ class IntentClassifier {
 
     // Open an app: «افتح يوتيوب»، «ادخل على توكلنا»، «شغل سناب».
     final appM = RegExp(r'^(?:افتح|افتحي|ادخل|ادخلي|شغل|شغلي|روح|ودني|خش)(?: لي)?(?: علي| الي| ل)?(?: تطبيق| برنامج)?\s+(.+)$').firstMatch(t);
+    // «افتح الكاميرا (وشوف كم معي)» means: take a picture and look — not "launch the Camera app".
+    if (appM != null && RegExp(r'^(?:ال)?(?:كاميرا|كامرا|كميرا)').hasMatch(appM.group(1)!)) {
+      return Intent(IntentType.vision, text: raw, confidence: 0.95);
+    }
+    // «افتح خرائط جوجل ووجهني إلى…» / «افتح الخرائط» → navigation in Google Maps.
+    if (appM != null && RegExp(r'^(?:ال)?(?:خرايط|خرائط|خريطه|قوقل ماب|جوجل ماب|google maps?)').hasMatch(appM.group(1)!)) {
+      final dest = RegExp(r'(?:الي|ل|علي|عند)\s+(.+)$').firstMatch(appM.group(1)!)?.group(1);
+      return Intent(IntentType.startGuidance, text: raw, arg: dest == null ? null : _originalSlice(raw, dest), options: const ['gmaps']);
+    }
     if (appM != null && !RegExp(r'^(الكاميرا وصف|الارشاد)').hasMatch(appM.group(1)!)) {
       final name = appM.group(1)!.replaceAll(RegExp(r'\s+(لو سمحت|من فضلك|يا حدق)$'), '').trim();
       if (name.isNotEmpty) return Intent(IntentType.openApp, text: raw, arg: _originalSlice(raw, name));
@@ -180,16 +225,32 @@ class IntentClassifier {
     final msgM = RegExp(
             r'^(?:(?:ارسل|ارسلي|ارسلوا|ارسلو|ابعث|ابعثي|ابعثوا|راسل|رسل|اكتب|ابعتلي|ارسللي)(?: لي)?(?: رساله| مسج)?(?: نصيه| sms| عاديه)?(?: (?:علي |ب|عبر )?(?:الواتساب|الواتس|واتساب|واتس))?|(?:واتساب|واتس))\s+(.+)$')
         .firstMatch(t);
-    if (msgM != null) {
-      final sms = RegExp(r'(نصيه|sms|عاديه)').hasMatch(t.split(' ').take(4).join(' '));
-      // Remove a trailing/inline «واتساب» from the rest, then map back to the user's spelling.
-      final rest = msgM.group(1)!.replaceAll(RegExp(r'(^| )(?:علي |ب|عبر )?(?:الواتساب|الواتس|واتساب|واتس)(?= |$)'), ' ').trim();
-      if (rest.isNotEmpty) {
-        return Intent(IntentType.message, text: raw, arg: _originalSlice(raw, rest), options: [sms ? 'sms' : 'whatsapp']);
-      }
+    final msgVerb = RegExp(r'^(?:ارسل|ارسلي|ابعث|ابعثي|راسل|رسل|اكتب)(?: لي)?(?: (?:رساله|رسالتي|رسايل|مسج))?(?: نصيه| sms| عاديه)?(?: (?:علي |ب|عبر |في )?(?:الواتساب|الواتس|واتساب|واتس))?$');
+    if (msgM != null || msgVerb.hasMatch(t)) {
+      final channel = RegExp(r'(نصيه|sms|عاديه)').hasMatch(t.split(' ').take(4).join(' ')) ? 'sms' : 'whatsapp';
+      // Remove «واتساب» and vague recipients («إلى جهات الاتصال»), then map back to the user's spelling.
+      final rest = (msgM?.group(1) ?? '')
+          .replaceAll(RegExp(r'(^| )(?:علي |ب|عبر |في )?(?:الواتساب|الواتس|واتساب|واتس)(?= |$)'), ' ')
+          .replaceAll(RegExp(r'(^| )(?:رسالتي|رساله|مسج)(?= |$)'), ' ')
+          .replaceAll(RegExp(r'(^| )(?:الي |ل)?(?:جهات (?:ال)?اتصالي|جهات الاتصال|احد|شخص)(?= |$)'), ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      // «اكتب لي رسالة صباح الخير»: no «لـ/إلى» before a name → the words are the message, recipient unknown.
+      final textOnly = t.startsWith('اكتب') && rest.isNotEmpty && !RegExp(r'^(?:الي |علي |ل\S)').hasMatch(rest);
+      return Intent(IntentType.message,
+          text: raw, arg: rest.isEmpty ? '' : _originalSlice(raw, rest), options: [channel, if (textOnly) 'textOnly']);
     }
 
     // 3) Phone calls: «اتصل بأحمد»، «كلم أمي»، «اتصل على 0551234567».
+    // Emergency services / the saved emergency contact: «اتصل بالطوارئ»، «كلم الإسعاف».
+    if (RegExp(r'^(?:اتصل|اتصلي|كلم|دق)(?: لي)? ?(?:ب|علي |ل)?(?:ال)?(?:طواري|اسعاف|الاسعاف|شرطه|الشرطه|دفاع المدني|الدفاع المدني|رقم الطواري|جهه الطواري|النجده)').hasMatch(t)) {
+      final service = RegExp(r'(اسعاف|شرطه|دفاع المدني|النجده)').firstMatch(t)?.group(1);
+      return Intent(IntentType.call, text: raw, arg: '__emergency__', options: [if (service != null) service]);
+    }
+    // «اتصل» alone / «اتصل بجهات اتصالي» / «ابي اتصل» → ask who.
+    if (RegExp(r'^(?:اتصل|اتصلي|كلم|دق)(?: لي)?(?: (?:ب|علي |ب)?(?:جهات (?:ال)?اتصالي|جهات الاتصال|احد|شخص|حد))?$').hasMatch(t)) {
+      return Intent(IntentType.call, text: raw, arg: '');
+    }
     final callM = RegExp(r'^(?:اتصل|اتصلي|اتصلوا|اتصال|كلم|كلمي|كلموا|دق|دقي|اضرب)(?: لي)?(?: علي| الي| ب| ل)?\s+(.+)$').firstMatch(t);
     if (callM != null) {
       final who = callM.group(1)!.replaceAll(RegExp(r'\s+(?:الحين|الان|لو سمحت|من فضلك|يا حدق)$'), '').trim();
@@ -201,7 +262,9 @@ class IntentClassifier {
     }
 
     // 4) Memory management.
-    if (hasAny(t, ['ماذا تتذكر', 'ماذا تعرف عني', 'وش تعرف عني', 'ايش تتذكر', 'اعرض ذاكرتك', 'ماذا تحفظ'])) {
+    if (hasAny(t, ['ماذا تتذكر', 'ماذا تعرف عني', 'وش تعرف عني', 'ايش تتذكر', 'اعرض ذاكرتك', 'ماذا تحفظ',
+          'ما تتذكر', 'وش تتذكر', 'تتذكر عني', 'تعرف عني', 'ماذا تذكر']) &&
+        !hasAny(t, ['امسح', 'احذف', 'انس'])) {
       return Intent(IntentType.memoryShow, text: raw);
     }
     if (hasAny(t, ['امسح ذاكرتك', 'امسح الذاكره', 'احذف كل شيء', 'امسح كل شيء', 'احذف ذاكرتك'])) {
@@ -227,20 +290,28 @@ class IntentClassifier {
     }
 
     // Ride: «اطلب سيارة»، «اطلب لي أوبر»، «ابغى كريم».
-    final rideM = RegExp(r'(?:^| )(?:اطلب|اطلبي|ابي|ابغي|احجز|احتاج|اريد)(?: لي)? (?:سياره|تاكسي|توصيل|مشوار|اوبر|كريم|جيني|uber|careem)').firstMatch(t);
-    if (rideM != null || RegExp(r'^(?:نعم |ايوه |اي |طيب )?(اوبر|كريم|سياره|تاكسي)$').hasMatch(t)) {
+    final rideM = RegExp(r'(?:^| )(?:اطلب|اطلبي|ابي|ابغي|احجز|احتاج|اريد)(?: لي)?(?: من)? (?:سياره|تاكسي|توصيل|مشوار|اوبر|كريم|جيني|بولت|وصلني|uber|careem|bolt)').firstMatch(t);
+    if (rideM != null || RegExp(r'^(?:نعم |ايوه |اي |طيب )?(اوبر|كريم|بولت|جيني|سياره|تاكسي)$').hasMatch(t)) {
       final app = t.contains('كريم') || t.contains('careem')
           ? 'careem'
           : (t.contains('اوبر') || t.contains('uber'))
               ? 'uber'
-              : null;
-      return Intent(IntentType.ride, text: raw, arg: app);
+              : (t.contains('بولت') || t.contains('bolt'))
+                  ? 'bolt'
+                  : t.contains('جيني')
+                      ? 'jeeny'
+                      : RegExp(r'(?:اطلب|من) وصلني').hasMatch(t)
+                          ? 'wasalni'
+                          : null;
+      // «اطلب سيارة إلى المستشفى» → the destination too.
+      final dest = RegExp(r'(?:سياره|تاكسي|اوبر|كريم|بولت|جيني|وصلني|توصيل|مشوار)(?: .*?)? (?:الي|علي|عند) (.+)$').firstMatch(t)?.group(1);
+      return Intent(IntentType.ride, text: raw, arg: app, options: [if (dest != null) _originalSlice(raw, dest)]);
     }
     if (RegExp(r'^(?:لا )?(?:امشيني|مشيني|مشني|ابي امشي|ابغي امشي|بمشي|امشي|خلني امشي|راح امشي)(?: .*)?$').hasMatch(t)) {
       return Intent(IntentType.walkAnyway, text: raw);
     }
 
-    const goVerbs = r'(?:خذني|خدني|وديني|ودني|وصلني|دلني|وجهني|ابي اروح|ابغي اروح|اريد الذهاب|اريد ان اذهب|ابي اروح)';
+    const goVerbs = r'(?:خذني|خدني|وديني|ودني|وصلني|اوصلني|دلني|وجهني|ارشدني|ابي اروح|ابغي اروح|اريد الذهاب|اريد ان اذهب|ابي اروح)';
     final wantsToGo = RegExp('(^| )$goVerbs').hasMatch(t);
 
     // Saved places: «أين البيت؟» / «خذني إلى البيت».
@@ -254,7 +325,7 @@ class IntentClassifier {
     }
 
     // Any place: «وين أقرب محل شاورما»، «ابحث عن صيدلية»، «خذني إلى أقرب مسجد».
-    final place = RegExp('(?:اقرب|ابحث عن|دور لي|دورلي|دور علي|$goVerbs(?: (?:الي|ل|علي|عند))?(?: اقرب)?)\\s+(.+)\$')
+    final place = RegExp('(?:اقرب|ابحث عن|دور لي|دورلي|دور علي|حدد(?: لي)? (?:موقع|مكان)|حددلي (?:موقع|مكان)|^موقع|وين(?= (?:محل|مطعم|صيدليه|مستشفي|مسجد|بقاله|تموينات|سوبرماركت|مخبز|مخابز|بنك|صراف|كافيه|مقهي))|$goVerbs(?: (?:الي|ل|علي|عند))?(?: اقرب)?)\\s+(.+)\$')
         .firstMatch(t);
     if (place != null) {
       var q = place.group(1)!
@@ -301,6 +372,8 @@ class IntentClassifier {
       'العمله', 'كم هذه', 'الدواء', 'هذا الدواء', 'النشره', 'الباب', 'مفتوح', 'مغلق',
       'عايق', 'درج', 'الاشاره', 'التقاطع', 'المنتج', 'مكونات', 'صلاحيه', 'تاريخ الانتهاء',
       'القميص', 'الملابس', 'من هذا', 'من هذه', 'من امامي', 'صف لي', 'صف المكان',
+      'امامك', 'قدامك', 'تراه', 'تشوفه', 'النقود', 'الفلوس', 'كم معي', 'كم معاي', 'كم ريال', 'الورقه النقديه',
+      'تعرف علي هذا', 'تعرف علي هذه', 'تعرف علي هذي', 'تعرف الي', 'النص', 'صور', 'التقط',
     ];
     return hasAny(t, visual);
   }

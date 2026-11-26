@@ -21,7 +21,9 @@ class CameraService {
     await controller!.initialize();
     try {
       await controller!.setFocusMode(FocusMode.auto);
-      await controller!.setFlashMode(FlashMode.off);
+      await controller!.setExposureMode(ExposureMode.auto);
+      // Flash only when it's dark: many photos came back «مظلمة».
+      await controller!.setFlashMode(FlashMode.auto);
     } catch (_) {}
     return true;
   }
@@ -29,7 +31,13 @@ class CameraService {
   Future<Uint8List?> capture() async {
     final c = controller;
     if (c == null || !c.value.isInitialized) return null;
-    await Future.delayed(const Duration(milliseconds: 350)); // let focus/exposure settle
+    // Hold for a second so focus and exposure settle and the hand steadies
+    // (350 ms gave blurry pictures); then focus on the center, where the user points.
+    try {
+      await c.setFocusPoint(const Offset(0.5, 0.5));
+      await c.setExposurePoint(const Offset(0.5, 0.5));
+    } catch (_) {}
+    await Future.delayed(const Duration(milliseconds: 1100));
     final file = await c.takePicture();
     final bytes = await file.readAsBytes();
     try {

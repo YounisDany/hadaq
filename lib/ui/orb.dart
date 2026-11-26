@@ -111,8 +111,8 @@ class _VoiceOrbState extends State<VoiceOrb> with SingleTickerProviderStateMixin
       case Phase.clarify:
         return Text('؟', style: TextStyle(fontSize: s * 0.42, fontWeight: FontWeight.w800, color: Colors.white));
       case Phase.sos:
-        return Text(widget.sosCount > 0 ? '${widget.sosCount}' : 'SOS',
-            style: TextStyle(fontSize: s * (widget.sosCount > 0 ? 0.42 : 0.24), fontWeight: FontWeight.w900, color: Colors.white));
+        return Text(widget.sosCount > 0 ? '${widget.sosCount}' : 'طوارئ',
+            style: TextStyle(fontSize: s * (widget.sosCount > 0 ? 0.42 : 0.2), fontWeight: FontWeight.w900, color: Colors.white));
       case Phase.setup:
         return _bars(s, t, live: true);
       case Phase.update:

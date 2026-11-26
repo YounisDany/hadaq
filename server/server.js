@@ -367,6 +367,28 @@ function publicConfig(s, platform, build, blocked) {
   };
 }
 
+/**
+ * What the app can DO. Sent with plain (no-photo) questions so the assistant
+ * answers with an action instead of «لا يمكنني» when the app's own rules missed
+ * a phrasing. Kept in code (not the editable prompt) because the app parses it.
+ */
+const ACTIONS_PROMPT = `
+تطبيق حدق على جوال المستخدم يستطيع تنفيذ هذه الأفعال، فلا تقل أبدًا «لا أستطيع» عنها، بل اطلب تنفيذها في الحقل action:
+- call: اتصال بشخص من جهات الاتصال أو برقم. who = الاسم أو الرقم كما قاله، أو "" إن لم يحدد.
+- emergency_call: اتصال بالطوارئ. service = "اسعاف" أو "شرطه" أو "".
+- message: رسالة واتساب أو نصية. who = المستلم أو "". text = نص الرسالة أو "". channel = "whatsapp" أو "sms".
+- open_app: فتح تطبيق مثبت. app = اسمه.
+- places: البحث عن مكان قريب أو باسمه. place = نوعه أو اسمه. go = true إن طلب الذهاب أو الإرشاد إليه.
+- maps: الملاحة بخرائط جوجل. place = المكان أو "".
+- ride: طلب سيارة (أوبر، كريم، بولت، جيني، وصلني). app = اسم التطبيق أو "". place = الوجهة أو "".
+- camera: الطلب يحتاج رؤية شيء أمام المستخدم (نقود، نص، دواء، منتج، مكان، لون) ولا توجد صورة. question = ما يريد معرفته.
+  مهم جدًا: لا توجد صورة مع هذا السؤال. لا تصف ولا تخمّن أبدًا أي شيء أمامه أو في يده (اسم دواء، رقم، لون، نص)؛ اختر camera دائمًا.
+- memory: يسأل عما يتذكره التطبيق عنه. where_am_i: يسأل عن موقعه.
+- none: سؤال عام أو حديث تجيب عنه بنفسك.
+افهم الطلب حتى لو كان غير واضح أو بلهجة أو فيه أخطاء تفريغ صوتي، واختر أقرب فعل منطقي. إن كان غامضًا جدًا فاسأله سؤالًا قصيرًا محددًا بخيارين.
+أضف إلى JSON الحقل "action": {"type": "...", ...}. عند وجود فعل اجعل answer جملة قصيرة جدًا.
+ما لا يستطيعه التطبيق بعد: التذكيرات والمنبهات والمواعيد وجدولة المهام. إن طُلبت فقل بصراحة إنها غير متاحة بعد، ولا تعد أبدًا بتذكير.`;
+
 /** AI proxy: the Gemini key never leaves the server. */
 app.post('/api/ai/ask', async (req, res) => {
   const b = req.body || {};
@@ -385,7 +407,7 @@ app.post('/api/ai/ask', async (req, res) => {
   const key = getSecret(PROVIDERS[provider].keyName);
   if (!key) return res.status(503).json({ error: 'no_key' });
 
-  const system = s.ai_system_prompt +
+  const system = s.ai_system_prompt + (b.actions && !vision ? ACTIONS_PROMPT : '') +
     (b.user_context ? `
 
 معلومات عن المستخدم (من ذاكرته): ${String(b.user_context).slice(0, 500)}` : '');
@@ -439,6 +461,23 @@ app.post('/api/stt', async (req, res) => {
     let text = String(j.text || '').trim();
     // Guard against the known hallucinations on non-speech audio.
     if (/^(ترجمة|اشترك|شكرا للمشاهدة|subtitles|thank you)/i.test(text) || text.length > 400) text = '';
+    // Now and then the model writes Arabic speech in Latin/Greek letters («Nam», «Ναι»):
+    // ask once more for Arabic script (only when there was real speech).
+    const foreign = (text.match(/[a-zͰ-Ͽ]/gi) || []).length;
+    if (foreign > 1 && foreign > text.replace(/\s/g, '').length / 2) {
+      const f2 = new FormData();
+      f2.append('file', new Blob([audio], { type: 'audio/mp4' }), 'speech.m4a');
+      f2.append('model', s.stt_model || 'gpt-4o-mini-transcribe');
+      f2.append('language', 'ar');
+      f2.append('prompt', 'اكتب الكلام العربي بالحروف العربية.');
+      f2.append('response_format', 'json');
+      try {
+        const r2 = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: `Bearer ${key}` }, body: f2 });
+        const j2 = await r2.json().catch(() => ({}));
+        const again = String(j2.text || '').trim();
+        if (r2.ok && again && !again.includes('اكتب الكلام العربي')) text = again;
+      } catch { /* keep the first result */ }
+    }
     res.json({ text });
   } catch {
     res.status(502).json({ error: 'network' });

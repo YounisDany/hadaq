@@ -160,6 +160,7 @@ class BackendService {
     String? imageB64,
     String? userContext,
     List<(String, String)> history = const [],
+    bool actions = false,
   }) async {
     final res = await http
         .post(Uri.parse('$baseUrl/api/ai/ask'),
@@ -170,6 +171,7 @@ class BackendService {
               if (imageB64 != null) 'image_b64': imageB64,
               if (userContext != null && userContext.isNotEmpty) 'user_context': userContext,
               'history': [for (final (u, a) in history) [u, a]],
+              if (actions) 'actions': true,
             }))
         .timeout(const Duration(seconds: 30));
     final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;

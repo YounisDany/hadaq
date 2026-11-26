@@ -45,9 +45,12 @@ class FeedbackService {
     _player.stop().then((_) => _player.play(AssetSource('sounds/$name.wav'), volume: 0.7)).catchError((_) {});
   }
 
+  /// Soft waiting tick: starts right away (the user knows they were heard), then
+  /// repeats until the reply begins.
   void startThinking() {
     stopThinking();
-    _pulse = Timer.periodic(const Duration(seconds: 1), (_) => cue(Cue.thinking));
+    cue(Cue.thinking);
+    _pulse = Timer.periodic(const Duration(milliseconds: 900), (_) => cue(Cue.thinking));
   }
 
   void stopThinking() {

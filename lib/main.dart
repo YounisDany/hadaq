@@ -22,6 +22,9 @@ void main() {
     Future.delayed(const Duration(milliseconds: 1200), () {
       final p = Phase.values.where((x) => x.name == shot).firstOrNull;
       if (p != null) c.showDemo(p);
+      // `&text=…`: a custom answer, to check how long text fits on screen.
+      final t = Uri.base.queryParameters['text'];
+      if (t != null) c.demoAnswer(t);
     });
   }
 }

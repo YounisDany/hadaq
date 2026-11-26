@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 /// Colours from the Hadaq design (dark navy, blue orb, AAA-contrast text).
@@ -16,6 +18,53 @@ abstract class HC {
   static const sosBg = Color(0xFF3A1430);
   static const text = Colors.white;
   static const textDim = Color(0xFFB9C6EE); // 9.6:1 on bgTop
+}
+
+/// Frosted-glass surface for every card: blur what's behind, a translucent white
+/// sheen and a light edge. [tint] colours it (red for the emergency bar).
+class Glass extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final double radius;
+  final Color? tint;
+  final double? width;
+  const Glass({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.radius = 22, this.tint, this.width});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = tint;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          width: width,
+          padding: padding,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(radius),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: t == null
+                  ? [Colors.white.withValues(alpha: 0.16), Colors.white.withValues(alpha: 0.05)]
+                  : [t.withValues(alpha: 0.34), t.withValues(alpha: 0.14)],
+            ),
+            border: Border.all(color: (t ?? Colors.white).withValues(alpha: t == null ? 0.24 : 0.55), width: 1.2),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Font size that keeps long text inside the screen: the longer the text, the smaller.
+double fitFont(String s, double base) {
+  final n = s.length;
+  if (n <= 70) return base;
+  if (n <= 140) return base * 0.85;
+  if (n <= 260) return base * 0.72;
+  return base * 0.62;
 }
 
 ThemeData hadaqTheme() => ThemeData(

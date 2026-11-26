@@ -29,15 +29,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return ListenableBuilder(
       listenable: c,
       builder: (context, _) => Scaffold(
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [HC.bgTop, HC.bgBottom],
-            ),
-          ),
-          child: SafeArea(
+        body: Stack(children: [
+          const _Backdrop(),
+          SafeArea(
             child: Column(
               children: [
                 Expanded(
@@ -68,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-        ),
+        ]),
       ),
     );
   }
@@ -91,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return LayoutBuilder(builder: (context, box) {
       return SingleChildScrollView(
-        physics: const NeverScrollableScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         child: ConstrainedBox(
           constraints: BoxConstraints(minHeight: box.maxHeight),
           child: Column(
@@ -231,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 18),
           Text(c.setupQuestion,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: HC.text, fontSize: 26, fontWeight: FontWeight.w800, height: 1.5)),
+              style: TextStyle(color: HC.text, fontSize: fitFont(c.setupQuestion, 26), fontWeight: FontWeight.w800, height: 1.5)),
           if (c.heard.isNotEmpty) ...[
             const SizedBox(height: 16),
             _quote(c.heard, size: 24),
@@ -283,23 +277,28 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(c.objectLabel ?? 'حَدَق يجيب', style: const TextStyle(color: HC.textDim, fontSize: 14)),
             ]),
             const SizedBox(height: 6),
-            Text(c.answer,
-                style: const TextStyle(color: HC.text, fontSize: 24, height: 1.5, fontWeight: FontWeight.w700)),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.42),
+              child: SingleChildScrollView(
+                child: Text(c.answer,
+                    style: TextStyle(color: HC.text, fontSize: fitFont(c.answer, 24), height: 1.5, fontWeight: FontWeight.w700)),
+              ),
+            ),
           ],
         ),
       );
 
-  Widget _savedCard({String? title}) => Container(
+  Widget _savedCard({String? title}) => Glass(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+        radius: 20,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (title != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: Text(title, style: const TextStyle(color: HC.navy, fontSize: 18, fontWeight: FontWeight.w800)),
+                child: Text(title, style: const TextStyle(color: HC.text, fontSize: 18, fontWeight: FontWeight.w800)),
               ),
             for (final r in c.savedRows)
               Padding(
@@ -309,8 +308,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(r.label, style: const TextStyle(color: Color(0xFF4A5888), fontSize: 13)),
-                      Text(r.value, style: const TextStyle(color: HC.navy, fontSize: 19, fontWeight: FontWeight.w800)),
+                      Text(r.label, style: const TextStyle(color: HC.textDim, fontSize: 13)),
+                      Text(r.value, style: TextStyle(color: HC.text, fontSize: fitFont(r.value, 19), fontWeight: FontWeight.w800)),
                     ]),
                   ),
                 ]),
@@ -321,24 +320,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _quote(String s, {double size = 26}) => Text('«$s»',
       textAlign: TextAlign.center,
-      style: TextStyle(color: HC.text, fontSize: size, fontWeight: FontWeight.w800, height: 1.4));
+      style: TextStyle(color: HC.text, fontSize: fitFont(s, size), fontWeight: FontWeight.w800, height: 1.4));
 
-  Widget _pill(String s) => Container(
+  Widget _pill(String s) => Glass(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(color: HC.card, borderRadius: BorderRadius.circular(30), border: Border.all(color: HC.cardBorder)),
+        radius: 30,
         child: Text(s, style: const TextStyle(color: HC.text, fontSize: 16, fontWeight: FontWeight.w600)),
       );
 
-  Widget _card({required Widget child}) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: HC.card.withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: HC.cardBorder),
-        ),
-        child: child,
-      );
+  Widget _card({required Widget child}) => Glass(width: double.infinity, child: child);
 }
 
 class _TopBar extends StatelessWidget {
@@ -363,9 +353,9 @@ class _TopBar extends StatelessWidget {
     );
   }
 
-  Widget _chip(IconData i, String t) => Container(
+  Widget _chip(IconData i, String t) => Glass(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(color: HC.card, borderRadius: BorderRadius.circular(20)),
+        radius: 20,
         child: Row(children: [
           Icon(i, size: 14, color: HC.textDim),
           const SizedBox(width: 4),
@@ -384,12 +374,12 @@ class _StatusChip extends StatelessWidget {
       Phase.idle => (null, HC.blue),
       Phase.listening => ('أستمع إليك…', HC.red),
       Phase.thinking => ('أفكّر…', HC.purple),
-      Phase.answer => ('سؤال ← إجابة', HC.purple),
-      Phase.saved => ('إعداد ← حُفظ في الذاكرة', HC.green),
-      Phase.camera => ('طلب ← الكاميرا', HC.blue),
+      Phase.answer => ('سؤال · إجابة', HC.purple),
+      Phase.saved => ('إعداد · حُفظ في الذاكرة', HC.green),
+      Phase.camera => ('طلب · الكاميرا', HC.blue),
       Phase.memory => ('ذاكرتي', HC.purple),
       Phase.clarify => ('لم أتأكد بعد', HC.amber),
-      Phase.sos => ('طوارئ ← SOS', HC.red),
+      Phase.sos => ('الطوارئ', HC.red),
       Phase.update => ('تحديث مطلوب', HC.amber),
       Phase.setup => ('الإعداد', HC.green),
     };
@@ -421,25 +411,56 @@ class _SosBar extends StatelessWidget {
           c.triggerSos();
         },
         onTap: c.phase == Phase.sos ? c.cancelSos : c.onTap,
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-          height: 64,
-          decoration: BoxDecoration(
-            color: HC.sosBg,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: HC.red.withValues(alpha: 0.6)),
-          ),
-          alignment: Alignment.center,
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Color(0xFFFF9EA1)),
-              SizedBox(width: 8),
-              Text('SOS · اضغط مطوّلًا هنا',
-                  style: TextStyle(color: Color(0xFFFFC2C4), fontSize: 18, fontWeight: FontWeight.w800)),
-            ],
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          child: Glass(
+            tint: HC.red,
+            radius: 22,
+            padding: EdgeInsets.zero,
+            child: const SizedBox(
+              height: 64,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Color(0xFFFFD2D4)),
+                  SizedBox(width: 8),
+                  Text('الطوارئ · اضغط مطوّلًا هنا',
+                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Deep navy background with three soft colour glows, so the glass cards have
+/// something to blur and read as glass.
+class _Backdrop extends StatelessWidget {
+  const _Backdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget glow(Color c, double size) => Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(colors: [c.withValues(alpha: 0.55), c.withValues(alpha: 0)]),
+          ),
+        );
+    return Positioned.fill(
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [HC.bgTop, HC.bgBottom]),
+        ),
+        child: Stack(children: [
+          Positioned(top: -120, right: -100, child: glow(HC.blue, 380)),
+          Positioned(top: 260, left: -140, child: glow(HC.purple, 360)),
+          Positioned(bottom: -80, right: -60, child: glow(const Color(0xFF1FB6C9), 300)),
+        ]),
       ),
     );
   }
