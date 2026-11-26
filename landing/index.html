@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>حَدَق · رفيقك الذكي يرى معك</title>
+<meta name="description" content="حَدَق مساعد صوتي للمكفوفين وضعاف البصر: يصف ما أمامك، ويرشدك خطوة بخطوة، ويتصل ويراسل عنك — بصوتك فقط.">
+<meta name="theme-color" content="#1F3BD8">
+<meta property="og:title" content="حَدَق · رفيقك الذكي يرى معك">
+<meta property="og:description" content="مساعد صوتي للمكفوفين وضعاف البصر: يرى معك، ويمشي معك، ويتكلم عنك.">
+<meta property="og:image" content="/img/app-icon.png">
+<link rel="icon" href="/img/app-icon.png">
+<link rel="apple-touch-icon" href="/img/app-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --b1: #3D63FF;   /* hero top */
+    --b2: #2A44E6;   /* body */
+    --b3: #1C2CB8;   /* depth */
+    --b4: #15208C;   /* footer */
+    --ink: #0E1640;
+    --white: #fff;
+    --soft: rgba(255,255,255,.86);
+    --muted: rgba(255,255,255,.72);
+    --glass: rgba(255,255,255,.09);
+    --glass-line: rgba(255,255,255,.18);
+    --red: #FF4D5A;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; color: var(--white); background: var(--b2);
+    font-family: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  img { max-width: 100%; display: block; }
+  a { color: inherit; }
+  .wrap { width: min(1180px, 100% - 40px); margin-inline: auto; }
+  .skip { position: absolute; inset-inline-start: 12px; top: -60px; background: #fff; color: var(--ink); padding: 10px 16px; border-radius: 10px; z-index: 50; font-weight: 700; }
+  .skip:focus { top: 12px; }
+  :focus-visible { outline: 3px solid #FFD54A; outline-offset: 3px; border-radius: 12px; }
+
+  /* ---------- nav ---------- */
+  .nav { position: absolute; inset-inline: 0; top: 0; z-index: 10; }
+  .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 84px; }
+  .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .brand img { height: 34px; width: auto; }
+  .brand small { font-size: 12px; letter-spacing: .14em; color: var(--muted); font-weight: 600; text-transform: uppercase; direction: ltr; }
+  .pill-btn { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: var(--b3); text-decoration: none; font-weight: 700; padding: 11px 20px; border-radius: 999px; font-size: 15px; box-shadow: 0 10px 30px rgba(10,20,90,.25); transition: transform .2s; }
+  .pill-btn:hover { transform: translateY(-2px); }
+
+  /* ---------- hero ---------- */
+  .hero { position: relative; min-height: 100vh; min-height: 100svh; display: grid; align-items: center; padding: 110px 0 90px;
+    background: radial-gradient(1200px 700px at 20% 10%, rgba(255,255,255,.16), transparent 60%), linear-gradient(180deg, var(--b1), var(--b2) 75%); }
+  .hero .wrap { display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px; align-items: center; }
+  .hero h1 { font-size: clamp(44px, 6.6vw, 84px); line-height: 1.12; margin: 0 0 22px; font-weight: 700; letter-spacing: -.01em; }
+  .hero h1 span { display: block; color: #CFE0FF; }
+  .lead { font-size: clamp(18px, 1.6vw, 21px); line-height: 1.85; color: var(--soft); margin: 0 0 34px; max-width: 34ch; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 14px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 58px; padding: 0 26px; border-radius: 18px; text-decoration: none; font-weight: 700; font-size: 17px; transition: transform .2s, box-shadow .2s, background .2s; }
+  .btn-white { background: #fff; color: var(--b3); box-shadow: 0 18px 40px rgba(10,20,90,.3); }
+  .btn-white:hover { transform: translateY(-3px); }
+  .btn-ghost { border: 1.5px solid rgba(255,255,255,.5); color: #fff; }
+  .btn-ghost:hover { background: rgba(255,255,255,.1); }
+  .btn svg { width: 22px; height: 22px; flex: none; }
+  .btn .tiny { display: block; font-size: 11.5px; font-weight: 500; opacity: .7; line-height: 1; margin-bottom: 3px; }
+  .btn .stack { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
+  .note { margin-top: 18px; color: var(--muted); font-size: 14.5px; }
+
+  .scene { position: relative; aspect-ratio: 1 / 1; max-width: 560px; justify-self: center; width: 100%; }
+  .obj { position: absolute; filter: drop-shadow(0 30px 40px rgba(8,16,90,.38)); will-change: transform; }
+  .obj img { width: 100%; }
+  .float { animation: float 7s ease-in-out infinite; }
+  .float.d2 { animation-delay: -2.3s; animation-duration: 8s; }
+  .float.d3 { animation-delay: -4.6s; animation-duration: 6.5s; }
+  .float.d4 { animation-delay: -1.2s; animation-duration: 9s; }
+  @keyframes float { 0%,100% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -18px; rotate: 2deg; } }
+  .s-orb { width: 54%; left: 23%; top: 22%; }
+  .s-eye { width: 40%; right: 0; top: 2%; }
+  .s-pin { width: 21%; left: 2%; top: 6%; }
+  .s-bubble { width: 36%; left: 0; bottom: 6%; }
+  .s-sos { width: 30%; right: 4%; bottom: 4%; }
+  .ring { position: absolute; inset: 14%; border-radius: 50%; border: 1.5px dashed rgba(255,255,255,.22); }
+  .ring.r2 { inset: 4%; border-style: solid; border-color: rgba(255,255,255,.08); }
+
+  /* ---------- sections ---------- */
+  section { position: relative; }
+  .sec { padding: 110px 0; }
+  .sec-title { text-align: center; font-size: clamp(32px, 4.2vw, 50px); margin: 0 0 14px; font-weight: 700; }
+  .sec-sub { text-align: center; color: var(--muted); font-size: 18px; margin: 0 auto 60px; max-width: 52ch; line-height: 1.8; }
+
+  /* steps */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; position: relative; list-style: none; padding: 0; margin: 0; }
+  .steps::before { content: ''; position: absolute; top: 74px; inset-inline: 18%; border-top: 2px dashed rgba(255,255,255,.3); }
+  .step { text-align: center; position: relative; }
+  .step .ico { height: 150px; display: grid; place-items: center; margin-bottom: 18px; }
+  .step .ico img { max-height: 140px; width: auto; filter: drop-shadow(0 20px 26px rgba(8,16,90,.35)); }
+  .num { width: 34px; height: 34px; border-radius: 50%; background: #fff; color: var(--b3); font-weight: 700; display: inline-grid; place-items: center; margin-bottom: 12px; }
+  .step h3 { margin: 0 0 8px; font-size: 24px; }
+  .step p { margin: 0 auto; color: var(--soft); line-height: 1.8; max-width: 26ch; font-size: 16.5px; }
+
+  /* features */
+  .features { background: linear-gradient(180deg, var(--b2), var(--b3)); }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .card { background: var(--glass); border: 1px solid var(--glass-line); border-radius: 28px; padding: 26px 26px 30px; position: relative; overflow: hidden; backdrop-filter: blur(6px); transition: transform .3s, background .3s; }
+  .card:hover { transform: translateY(-6px); background: rgba(255,255,255,.13); }
+  .card .art { height: 130px; display: flex; align-items: center; margin-bottom: 14px; }
+  .card .art img { max-height: 124px; width: auto; filter: drop-shadow(0 18px 22px rgba(5,12,70,.4)); }
+  .card h3 { margin: 0 0 8px; font-size: 22px; }
+  .card p { margin: 0; color: var(--soft); line-height: 1.85; font-size: 16px; }
+  .card .say { margin-top: 14px; display: inline-block; background: rgba(255,255,255,.12); border-radius: 12px; padding: 7px 12px; font-size: 14.5px; color: #fff; }
+
+  /* showcase */
+  .showcase { background: var(--b3); overflow: hidden; }
+  .showcase .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
+  .phones { position: relative; height: 660px; }
+  .device { position: absolute; width: 290px; border-radius: 46px; padding: 11px; background: #0A0F2C; box-shadow: 0 40px 80px rgba(3,8,50,.55), inset 0 0 0 2px rgba(255,255,255,.08); }
+  .device img { border-radius: 36px; width: 100%; height: auto; aspect-ratio: 390 / 844; object-fit: cover; }
+  .device.d-front { right: 16%; top: 30px; rotate: -6deg; z-index: 2; }
+  .device.d-back { right: 46%; top: 70px; rotate: 7deg; opacity: .92; }
+  .phones .tag { position: absolute; z-index: 3; width: 130px; left: 6%; bottom: 40px; }
+  .show-text h2 { font-size: clamp(32px, 4vw, 50px); margin: 0 0 18px; line-height: 1.25; }
+  .show-text p { color: var(--soft); line-height: 1.9; font-size: 18px; margin: 0 0 22px; }
+  .ticks { list-style: none; padding: 0; margin: 0 0 30px; display: grid; gap: 12px; }
+  .ticks li { display: flex; gap: 12px; align-items: flex-start; font-size: 17px; line-height: 1.7; }
+  .ticks li::before { content: ''; flex: none; width: 24px; height: 24px; margin-top: 3px; border-radius: 50%; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4 8-9' fill='none' stroke='%232A44E6' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat; }
+
+  /* privacy */
+  .privacy { background: linear-gradient(180deg, var(--b3), var(--b2)); }
+  .priv { display: grid; grid-template-columns: 300px 1fr; gap: 50px; align-items: center; background: var(--glass); border: 1px solid var(--glass-line); border-radius: 36px; padding: 50px; }
+  .priv img { filter: drop-shadow(0 26px 30px rgba(5,12,70,.45)); }
+  .priv h2 { margin: 0 0 14px; font-size: clamp(28px, 3.4vw, 42px); }
+  .priv p { margin: 0 0 18px; color: var(--soft); line-height: 1.9; font-size: 17px; }
+
+  /* cta */
+  .cta { padding: 20px 0 110px; background: var(--b2); }
+  .cta-card { background: #fff; color: var(--ink); border-radius: 40px; padding: 60px; display: grid; grid-template-columns: 1fr 280px; gap: 40px; align-items: center; box-shadow: 0 40px 90px rgba(8,16,90,.35); }
+  .cta-card h2 { margin: 0 0 14px; font-size: clamp(30px, 3.8vw, 46px); line-height: 1.25; }
+  .cta-card p { margin: 0 0 28px; color: #4A5585; line-height: 1.9; font-size: 18px; }
+  .cta-card .btn-dark { background: var(--b2); color: #fff; box-shadow: 0 16px 34px rgba(42,68,230,.35); }
+  .cta-card .btn-dark:hover { transform: translateY(-3px); }
+  .cta-card .btn-line { border: 1.5px solid #C9D3F5; color: var(--b3); }
+  .cta-card .art img { filter: drop-shadow(0 30px 36px rgba(42,68,230,.35)); }
+
+  footer { background: var(--b4); padding: 40px 0 46px; text-align: center; color: var(--muted); font-size: 15px; }
+  footer .links { display: flex; justify-content: center; gap: 26px; flex-wrap: wrap; margin-top: 12px; }
+  footer a { color: #fff; text-decoration: none; opacity: .85; }
+  footer a:hover { opacity: 1; text-decoration: underline; }
+
+  /* reveal on scroll */
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity .8s ease, transform .8s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .float { animation: none; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+    html { scroll-behavior: auto; }
+  }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 960px) {
+    .hero .wrap, .showcase .wrap { grid-template-columns: 1fr; }
+    .hero { padding-top: 100px; min-height: auto; }
+    .scene { max-width: 420px; order: -1; margin-bottom: -10px; }
+    .lead { max-width: none; }
+    .grid { grid-template-columns: 1fr 1fr; }
+    .phones { height: 640px; }
+    .priv { grid-template-columns: 1fr; text-align: center; padding: 36px 26px; }
+    .priv img { max-width: 200px; margin: 0 auto; }
+    .cta-card { grid-template-columns: 1fr; text-align: center; padding: 40px 26px; }
+    .cta-card .art { order: -1; max-width: 200px; margin: 0 auto; }
+    .cta-card .ctas { justify-content: center; }
+  }
+  @media (max-width: 640px) {
+    .wrap { width: calc(100% - 32px); }
+    .nav .wrap { height: 70px; }
+    .brand img { height: 28px; }
+    .brand small { display: none; }
+    .pill-btn { padding: 9px 15px; font-size: 14px; }
+    .sec { padding: 80px 0; }
+    .steps { grid-template-columns: 1fr; gap: 44px; }
+    .steps::before { display: none; }
+    .grid { grid-template-columns: 1fr; }
+    .btn { width: 100%; }
+    .phones { height: 520px; }
+    .device { width: 230px; border-radius: 38px; }
+    .device img { border-radius: 30px; }
+    .device.d-front { right: 4%; }
+    .device.d-back { right: 36%; top: 50px; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="حَدَق — الصفحة الرئيسية">
+      <img src="/img/logo-white.png" alt="حَدَق" width="88" height="34">
+      <small>Hadaq</small>
+    </a>
+    <a class="pill-btn" href="/download/hadaq.apk" download>حمّل التطبيق</a>
+  </div>
+</header>
+
+<main id="main">
+  <!-- HERO -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap">
+      <div>
+        <h1 id="hero-title">رفيقك الذكي<span>… يرى معك</span></h1>
+        <p class="lead">مساعد صوتي للمكفوفين وضعاف البصر. اسأله عمّا أمامك، ويمشي معك إلى وجهتك منعطفًا بمنعطف، ويتصل ويراسل عنك — بصوتك فقط، من شاشة واحدة.</p>
+        <div class="ctas">
+          <a class="btn btn-white" href="#download" aria-label="حمّل حَدَق من Google Play">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#2A44E6" d="M3.6 2.3c-.3.3-.4.7-.4 1.2v17c0 .5.1.9.4 1.2l9.6-9.7L3.6 2.3z"/><path fill="#5B7CFF" d="M16.4 15.2l-3.2-3.2L3.6 21.7c.4.4 1 .4 1.6.1l11.2-6.6z"/><path fill="#8FB0FF" d="M16.4 8.8L5.2 2.2c-.6-.3-1.2-.3-1.6.1l9.6 9.7 3.2-3.2z"/><path fill="#1C2CB8" d="M20.2 11l-3.8-2.2-3.2 3.2 3.2 3.2 3.8-2.2c1.1-.6 1.1-1.4 0-2z"/></svg>
+            <span class="stack"><span class="tiny">حمّله من</span>Google Play</span>
+          </a>
+          <a class="btn btn-ghost" href="/download/hadaq.apk" download aria-label="تحميل تطبيق حَدَق للأندرويد، ملف APK"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a1 1 0 0 1 1 1v9.6l3.3-3.3a1 1 0 1 1 1.4 1.4l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 1 1 1.4-1.4l3.3 3.3V4a1 1 0 0 1 1-1zM5 19h14a1 1 0 1 1 0 2H5a1 1 0 1 1 0-2z"/></svg>تحميل APK</a>
+        </div>
+        <p class="note">مجاني · للأندرويد 7 فأحدث · <a href="/test" style="color:#fff;font-weight:700">كن من أوائل المختبِرين على Google Play ←</a></p>
+      </div>
+      <div class="scene" aria-hidden="true">
+        <div class="ring"></div><div class="ring r2"></div>
+        <div class="obj s-orb float" data-depth="0.6"><img src="/img/orb.webp" alt=""></div>
+        <div class="obj s-eye float d2" data-depth="1.2"><img src="/img/eye.webp" alt=""></div>
+        <div class="obj s-pin float d3" data-depth="1.6"><img src="/img/pin.webp" alt=""></div>
+        <div class="obj s-bubble float d4" data-depth="1"><img src="/img/bubble.webp" alt=""></div>
+        <div class="obj s-sos float d2" data-depth="1.4"><img src="/img/sos.webp" alt=""></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEPS -->
+  <section class="sec" aria-labelledby="steps-title">
+    <div class="wrap">
+      <h2 class="sec-title reveal" id="steps-title">المس الشاشة… وتكلّم</h2>
+      <p class="sec-sub reveal">لا قوائم ولا أزرار صغيرة تبحث عنها. الشاشة كلها زر واحد.</p>
+      <ol class="steps" role="list">
+        <li class="step reveal">
+          <div class="ico" aria-hidden="true"><img src="/img/phone.webp" alt=""></div>
+          <span class="num" aria-hidden="true">1</span>
+          <h3>المس أي مكان</h3>
+          <p>لمسة واحدة في أي موضع من الشاشة، أو زر رفع الصوت.</p>
+        </li>
+        <li class="step reveal">
+          <div class="ico" aria-hidden="true"><img src="/img/bubble.webp" alt=""></div>
+          <span class="num" aria-hidden="true">2</span>
+          <h3>قل ما تريد</h3>
+          <p>بلهجتك كما تتكلم: «وش اللي قدامي؟» «وين أقرب صيدلية؟»</p>
+        </li>
+        <li class="step reveal">
+          <div class="ico" aria-hidden="true"><img src="/img/orb.webp" alt=""></div>
+          <span class="num" aria-hidden="true">3</span>
+          <h3>حَدَق يجيب ويتصرف</h3>
+          <p>يرد بصوت واضح وجملة قصيرة، وينفّذ: يرشدك، يتصل، يرسل.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="sec features" aria-labelledby="feat-title">
+    <div class="wrap">
+      <h2 class="sec-title reveal" id="feat-title">كل ما تحتاجه… بصوتك</h2>
+      <p class="sec-sub reveal">مرافق واحد يجمع الرؤية والإرشاد والتواصل، بدل تطبيق لكل مهمة.</p>
+      <div class="grid">
+        <article class="card reveal">
+          <div class="art" aria-hidden="true"><img src="/img/camera.webp" alt=""></div>
+          <h3>يرى معك</h3>
+          <p>يصف ما أمامك، ويقرأ الأوراق والقوائم، ويعرف علب الأدوية وفئات العملات والألوان.</p>
+          <span class="say">«ما هذا الذي في يدي؟»</span>
+        </article>
+        <article class="card reveal">
+          <div class="art" aria-hidden="true"><img src="/img/pin.webp" alt=""></div>
+          <h3>يمشي معك</h3>
+          <p>يجد أقرب مكان تطلبه، ويقول لك اتجاهه منك، ويرشدك منعطفًا بمنعطف حتى تصل — وإذا كان بعيدًا يقترح لك سيارة.</p>
+          <span class="say">«خذني إلى أقرب مسجد»</span>
+        </article>
+        <article class="card reveal">
+          <div class="art" aria-hidden="true"><img src="/img/bubble.webp" alt=""></div>
+          <h3>يتصل ويراسل</h3>
+          <p>من جهات اتصالك مباشرة: يتصل بمن تريد، ويكتب رسالة واتساب أو نصية ويرسلها بعد تأكيدك.</p>
+          <span class="say">«ارسل لأمي إني بتأخر شوي»</span>
+        </article>
+        <article class="card reveal">
+          <div class="art" aria-hidden="true"><img src="/img/sos.webp" alt=""></div>
+          <h3>طوارئ بلمسة</h3>
+          <p>ضغطة مطوّلة أو هزّ الجوال أو قول «النجدة»، فيرسل موقعك لجهات الطوارئ التي اخترتها.</p>
+          <span class="say">«النجدة!»</span>
+        </article>
+        <article class="card reveal">
+          <div class="art" aria-hidden="true"><img src="/img/orb.webp" alt=""></div>
+          <h3>يفهم لهجتك</h3>
+          <p>يسمع العربية واللهجات بدقة، ويرد بإيجاز بلا تكرار، ويسألك عند الغموض بخيارين فقط.</p>
+          <span class="say">«اجعل صوتك أبطأ»</span>
+        </article>
+        <article class="card reveal">
+          <div class="art" aria-hidden="true"><img src="/img/eye.webp" alt=""></div>
+          <h3>يتذكرك</h3>
+          <p>اسمك، وبيتك، وأماكنك المفضلة، ومن تحب — محفوظة ومشفّرة على جوالك، تعدّلها أو تمسحها بجملة.</p>
+          <span class="say">«ماذا تتذكر عني؟»</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- SHOWCASE -->
+  <section class="sec showcase" aria-labelledby="show-title">
+    <div class="wrap">
+      <div class="phones reveal" aria-hidden="true">
+        <div class="device d-back"><img src="/img/shots/camera.webp" alt="" width="390" height="844" loading="lazy"></div>
+        <div class="device d-front"><img src="/img/shots/answer.webp" alt="" width="390" height="844" loading="lazy"></div>
+        <div class="obj tag float d3"><img src="/img/bubble.webp" alt=""></div>
+      </div>
+      <div class="show-text reveal">
+        <h2 id="show-title">شاشة واحدة،<br>بلا قوائم</h2>
+        <p>صُمّم حَدَق لمن لا يرى الشاشة: كرة صوت في المنتصف، ونص كبير بتباين عالٍ لضعاف البصر والمرافقين، ونغمات واهتزازات تخبرك بما يحدث دون أن تنظر.</p>
+        <ul class="ticks">
+          <li>لمسة للتحدّث، ولمستان لتكرار آخر جواب</li>
+          <li>إعداد أول بالصوت يتعرف عليك في دقيقة</li>
+          <li>نغمة عند الاستماع، ونبضة أثناء التفكير، واهتزاز عند الخطر</li>
+          <li>يعمل مع قارئ الشاشة TalkBack</li>
+        </ul>
+        <a class="btn btn-white" href="/app/">شاهده يعمل</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRIVACY -->
+  <section class="sec privacy" aria-labelledby="priv-title">
+    <div class="wrap">
+      <div class="priv reveal">
+        <img src="/img/eye.webp" alt="" aria-hidden="true">
+        <div>
+          <h2 id="priv-title">خصوصيتك بيدك</h2>
+          <p>الكاميرا مغلقة دائمًا، ولا تُفتح إلا حين تسأل. لا تُحفظ صورك ولا تسجيلات صوتك، وذاكرتك مشفّرة على جوالك. لا نشارك أي بيانات إلا بموافقتك الصريحة، وتلغيها متى شئت بقول: «احذف بياناتي».</p>
+          <a class="btn btn-ghost" href="/privacy">اقرأ سياسة الخصوصية</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta" id="download" aria-labelledby="cta-title">
+    <div class="wrap">
+      <div class="cta-card reveal">
+        <div>
+          <h2 id="cta-title">ابدأ مع حَدَق اليوم</h2>
+          <p>حمّله على جوالك الأندرويد الآن مباشرة، وقريبًا من Google Play. وإن كنت تعرف من يحتاجه، فشاركه هذه الصفحة.</p>
+          <div class="ctas">
+            <a class="btn btn-dark" href="#download" id="play-link" aria-label="حمّل حَدَق من Google Play — قريبًا">Google Play · قريبًا</a>
+            <a class="btn btn-line" href="/download/hadaq.apk" download aria-label="تحميل تطبيق حَدَق للأندرويد، ملف APK"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a1 1 0 0 1 1 1v9.6l3.3-3.3a1 1 0 1 1 1.4 1.4l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 1 1 1.4-1.4l3.3 3.3V4a1 1 0 0 1 1-1zM5 19h14a1 1 0 1 1 0 2H5a1 1 0 1 1 0-2z"/></svg>تحميل APK</a>
+          </div>
+        </div>
+        <div class="art" aria-hidden="true"><img src="/img/orb.webp" alt=""></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>حَدَق — رفيقك الذكي يرى معك</div>
+    <nav class="links" aria-label="روابط">
+      <a href="/test">كن مختبِرًا</a>
+      <a href="/privacy">سياسة الخصوصية</a>
+      <a href="/download/hadaq.apk" download>تحميل APK</a>
+      <a href="/app/">نسخة الويب</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="/config.js"></script>
+<script>
+  // Reveal on scroll
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+  // Gentle parallax on the hero objects (pointer), off for reduced motion / touch.
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduce && matchMedia('(pointer: fine)').matches) {
+    const objs = [...document.querySelectorAll('.scene .obj')];
+    let raf = 0;
+    addEventListener('pointermove', (e) => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const x = (e.clientX / innerWidth - .5), y = (e.clientY / innerHeight - .5);
+        for (const o of objs) {
+          const d = parseFloat(o.dataset.depth || 1);
+          o.style.transform = `translate(${-x * 26 * d}px, ${-y * 22 * d}px)`;
+        }
+      });
+    });
+  }
+
+  // Google Play link: set once the app is live (window.HADAQ_PLAY_URL in /config.js).
+  if (window.HADAQ_PLAY_URL) {
+    document.querySelectorAll('a[href="#download"]').forEach((a) => { a.href = window.HADAQ_PLAY_URL; a.target = '_blank'; a.rel = 'noopener'; });
+    const p = document.getElementById('play-link'); if (p) { p.textContent = 'حمّله من Google Play'; p.setAttribute('aria-label', 'حمّل حَدَق من Google Play'); }
+  }
+</script>
+</body>
+</html>

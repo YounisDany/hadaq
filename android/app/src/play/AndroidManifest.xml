@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Google Play build:
+     - SEND_SMS is a restricted permission on Play, so it is removed here.
+       The app falls back to opening the Messages app with the text ready.
+     - The WhatsApp auto-send accessibility service is removed too (Play needs a demo video
+       to declare it). WhatsApp still opens on the chat with the message typed. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove"/>
+    <application>
+        <service android:name="dev.waal.hadaq.HadaqAccessibilityService" tools:node="remove"/>
+    </application>
+</manifest>

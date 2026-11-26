@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: 'IBM Plex Sans Arabic', sans-serif; color: #fff; }
+  .bg { background: radial-gradient(900px 600px at 20% 0%, rgba(255,255,255,.18), transparent 60%), linear-gradient(180deg, #3D63FF, #2A44E6 70%, #1C2CB8); }
+  /* Feature graphic 1024x500 */
+  #feature { width: 1024px; height: 500px; position: relative; overflow: hidden; display: flex; align-items: center; padding: 0 70px; }
+  #feature .txt { width: 520px; z-index: 2; }
+  #feature img.logo { height: 66px; margin-bottom: 22px; }
+  #feature h1 { font-size: 50px; line-height: 1.2; }
+  #feature h1 span { color: #CFE0FF; display: block; }
+  #feature p { margin-top: 14px; font-size: 22px; opacity: .88; }
+  #feature .obj { position: absolute; filter: drop-shadow(0 24px 30px rgba(8,16,90,.4)); }
+  /* Screenshot 1080x1920 */
+  .shot { width: 1080px; height: 1920px; position: relative; overflow: hidden; text-align: center; padding-top: 120px; }
+  .shot h2 { font-size: 78px; line-height: 1.25; padding: 0 70px; }
+  .shot p { font-size: 40px; opacity: .85; margin-top: 22px; padding: 0 90px; line-height: 1.5; }
+  .device { position: absolute; left: 50%; top: 560px; width: 640px; translate: -50% 0; border-radius: 86px; padding: 22px; background: #0A0F2C; box-shadow: 0 60px 120px rgba(3,8,50,.55), inset 0 0 0 3px rgba(255,255,255,.08); }
+  .device img { width: 100%; border-radius: 66px; display: block; }
+  .shot .obj { position: absolute; filter: drop-shadow(0 30px 40px rgba(8,16,90,.4)); z-index: 3; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const kind = q.get('k');
+  const root = document.getElementById('root');
+  const IMG = '../../landing/img/';
+  if (kind === 'feature') {
+    root.innerHTML = `<div id="feature" class="bg">
+      <div class="txt"><img class="logo" src="${IMG}logo-white.png" alt="">
+        <h1>رفيقك الذكي<span>… يرى معك</span></h1>
+        <p>مساعد صوتي للمكفوفين وضعاف البصر</p></div>
+      <img class="obj" src="${IMG}orb.png" style="width:300px;left:150px;top:100px">
+      <img class="obj" src="${IMG}eye.png" style="width:230px;left:20px;top:-10px;rotate:-6deg">
+      <img class="obj" src="${IMG}pin.png" style="width:120px;left:410px;top:40px">
+      <img class="obj" src="${IMG}bubble.png" style="width:200px;left:10px;top:320px">
+      <img class="obj" src="${IMG}sos.png" style="width:170px;left:400px;top:330px">
+    </div>`;
+  } else {
+    const shots = {
+      s1: ['المس الشاشة… وتكلّم', 'شاشة واحدة بلا قوائم، وصوتك يكفي', 'idle', 'bubble', 'left:40px;top:470px;width:250px'],
+      s2: ['يرى معك', 'يصف ما أمامك ويقرأ الأوراق والأدوية والعملات', 'camera', 'camera', 'right:40px;top:500px;width:260px'],
+      s3: ['يمشي معك', 'أقرب مكان تطلبه، واتجاهه منك، ثم منعطفًا بمنعطف', 'answer', 'pin', 'left:50px;top:480px;width:180px'],
+      s4: ['يتذكرك', 'اسمك وبيتك ومن تحب — مشفّرة على جوالك', 'saved', 'eye', 'right:30px;top:490px;width:280px'],
+      s5: ['طوارئ بلمسة', 'ضغطة مطوّلة أو «النجدة»، فيرسل موقعك لمن تختار', 'sos', 'sos', 'left:40px;top:500px;width:260px'],
+      s6: ['يسمع لهجتك', 'يفهم العربية واللهجات ويرد بإيجاز', 'listening', 'orb', 'right:40px;top:480px;width:250px'],
+    };
+    const [h, p, img, obj, pos] = shots[kind];
+    root.innerHTML = `<div class="shot bg"><h2>${h}</h2><p>${p}</p>
+      <div class="device"><img src="${IMG}shots/${img}.png"></div>
+      <img class="obj" src="${IMG}${obj}.png" style="${pos}"></div>`;
+  }
+  window.addEventListener('load', () => document.fonts.ready.then(() => setTimeout(() => (window.__done = true), 300)));
+</script>
+</body>
+</html>

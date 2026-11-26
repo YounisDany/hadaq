@@ -1,0 +1,5 @@
+# Copy to key.properties (never commit it). Points at your upload keystore.
+storePassword=
+keyPassword=
+keyAlias=hadaq
+storeFile=C:/path/to/hadaq-upload.jks

@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>استبيان حَدَق</title>
+<meta name="description" content="استبيان حَدَق عن احتياجات المكفوفين وضعاف البصر: أجب بصوتك، أو باللمس.">
+<meta name="theme-color" content="#1F3BD8">
+<meta property="og:title" content="استبيان حَدَق">
+<meta property="og:description" content="دقائق قليلة تساعدنا نبني حَدَق كما يحتاجه المكفوفون وضعاف البصر. أجب بصوتك أو باللمس.">
+<meta property="og:image" content="/img/app-icon.png">
+<link rel="icon" href="/img/app-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --b1:#3D63FF; --b2:#2A44E6; --b3:#1C2CB8; --ink:#0E1640; --muted:#56608A; --line:#E3E8F7; --soft:#F3F6FF; --green:#1f9d55; --gold:#FFD54A; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif; color: #fff; min-height: 100dvh; overflow-x: hidden;
+    background: radial-gradient(900px 600px at 85% -10%, rgba(255,255,255,.18), transparent 60%), linear-gradient(180deg, var(--b1), var(--b2) 55%, var(--b3)); }
+  :focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; border-radius: 14px; }
+  button { font: inherit; }
+  [hidden] { display: none !important; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  header { display: flex; justify-content: space-between; align-items: center; height: 64px; padding: 0 max(16px, env(safe-area-inset-left)); position: relative; z-index: 5; }
+  header img { height: 28px; display: block; }
+  .pill { color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); border-radius: 999px; padding: 8px 14px; font-weight: 600; font-size: 14.5px; cursor: pointer; text-decoration: none; }
+  .pill:hover { background: rgba(255,255,255,.24); }
+
+  /* ================= start ================= */
+  #start { min-height: calc(100dvh - 64px); display: grid; place-items: center; padding: 8px 16px 40px; }
+  .start-in { width: min(640px, 100%); text-align: center; }
+  .start-in h1 { font-size: clamp(30px, 6.4vw, 50px); line-height: 1.2; margin: 0 0 10px; }
+  .start-in > p { font-size: 18px; line-height: 1.85; color: rgba(255,255,255,.9); margin: 0 auto 26px; max-width: 34ch; }
+  .choices { display: grid; gap: 14px; }
+  .choice { display: grid; grid-template-columns: 64px 1fr 22px; gap: 16px; align-items: center; width: 100%; text-align: start; border: 0; border-radius: 26px; padding: 20px; cursor: pointer;
+    background: #fff; color: var(--ink); box-shadow: 0 24px 60px rgba(8,16,90,.35); transition: transform .2s, box-shadow .2s; }
+  .choice:hover { transform: translateY(-3px); box-shadow: 0 30px 70px rgba(8,16,90,.42); }
+  .choice .ic { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; background: linear-gradient(180deg, var(--b1), var(--b3)); color: #fff; }
+  .choice.alt .ic { background: #EEF2FF; color: var(--b3); }
+  .choice strong { display: block; font-size: 21px; margin-bottom: 3px; }
+  .choice span { color: var(--muted); font-size: 15.5px; line-height: 1.6; }
+  .choice .arr { color: #9AA6D6; }
+  .note { margin-top: 22px; font-size: 14px; color: rgba(255,255,255,.78); line-height: 1.8; }
+
+  /* ================= voice ================= */
+  #voice { position: fixed; inset: 0; display: grid; grid-template-rows: 1fr auto; z-index: 2; overflow-y: auto; }
+  #stage { all: unset; display: grid; place-items: center; align-content: center; gap: 20px; padding: 92px 18px 16px; cursor: pointer; text-align: center; -webkit-tap-highlight-color: transparent; }
+  .vtop { position: absolute; top: 70px; inset-inline: 16px; display: grid; gap: 8px; pointer-events: none; }
+  .track { height: 6px; background: rgba(255,255,255,.2); border-radius: 6px; overflow: hidden; }
+  .track i { display: block; height: 100%; width: 0; background: #fff; border-radius: 6px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+  .count { font-weight: 600; font-size: 14.5px; color: rgba(255,255,255,.8); }
+  .orb { width: min(220px, 54vw); aspect-ratio: 1; border-radius: 50%; position: relative; display: grid; place-items: center; }
+  .orb::before, .orb::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: rgba(255,255,255,.12); transform: scale(var(--lv, 1)); transition: transform .09s linear; }
+  .orb::after { inset: 15%; background: rgba(255,255,255,.17); transform: scale(calc(1 + (var(--lv, 1) - 1) * .6)); }
+  .core { position: relative; z-index: 1; width: 58%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #DDE6FF 45%, #9FB4FF); box-shadow: 0 20px 50px rgba(8,16,90,.45); display: grid; place-items: center; color: var(--b3); transition: background .3s; }
+  .orb.speaking .core { animation: breathe 1.6s ease-in-out infinite; }
+  .orb.thinking .core { animation: pulse 1s ease-in-out infinite; }
+  .orb.listening .core { background: radial-gradient(circle at 35% 30%, #fff, #FFE89A 50%, var(--gold)); }
+  @keyframes breathe { 50% { transform: scale(1.06); } }
+  @keyframes pulse { 50% { transform: scale(.92); opacity: .8; } }
+  @media (prefers-reduced-motion: reduce) { .core { animation: none !important; } }
+  .state { font-size: 19px; font-weight: 700; min-height: 1.5em; }
+  .vq { font-size: clamp(22px, 4.6vw, 32px); line-height: 1.55; font-weight: 700; max-width: 760px; margin: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 760px; }
+  .chip { background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.22); border-radius: 999px; padding: 6px 14px; font-size: 15.5px; transition: background .25s, color .25s; }
+  .chip.on { background: #fff; color: var(--b3); font-weight: 700; }
+  .heard { font-size: 16.5px; color: rgba(255,255,255,.86); min-height: 1.6em; max-width: 700px; }
+  .vbar { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; padding: 12px 16px max(18px, env(safe-area-inset-bottom)); }
+
+  /* ================= touch ================= */
+  #touch { min-height: calc(100dvh - 64px); padding: 0 16px 40px; }
+  .tshell { width: min(720px, 100%); margin: 0 auto; }
+  .ttop { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; margin: 4px 0 16px; }
+  .iconbtn { width: 44px; height: 44px; border-radius: 14px; border: 1px solid rgba(255,255,255,.28); background: rgba(255,255,255,.12); color: #fff; display: grid; place-items: center; cursor: pointer; }
+  .iconbtn:disabled { opacity: .35; cursor: default; }
+  .card { background: #fff; color: var(--ink); border-radius: 30px; padding: clamp(22px, 4.5vw, 38px); box-shadow: 0 34px 80px rgba(8,16,90,.35); overflow: hidden; }
+  .slide { animation: slideIn .38s cubic-bezier(.2,.8,.2,1); }
+  .slide.back { animation-name: slideBack; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-28px); } }
+  @keyframes slideBack { from { opacity: 0; transform: translateX(28px); } }
+  @media (prefers-reduced-motion: reduce) { .slide { animation: none; } }
+  .qnum { color: var(--b2); font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+  .tq { font-size: clamp(21px, 4vw, 27px); line-height: 1.6; margin: 0 0 6px; outline: none; }
+  .hint { color: var(--muted); font-size: 15px; margin: 0 0 18px; }
+  .tiles { display: grid; gap: 10px; }
+  @media (min-width: 640px) { .tiles.two { grid-template-columns: 1fr 1fr; } }
+  .tile { position: relative; display: flex; align-items: center; gap: 12px; min-height: 62px; width: 100%; text-align: start; padding: 14px 16px; border: 2px solid var(--line); border-radius: 18px; background: #fff; color: var(--ink); font-size: 17.5px; font-weight: 500; cursor: pointer; transition: border-color .18s, background .18s, transform .12s; }
+  .tile:hover { border-color: #BAC6F5; background: #FAFBFF; }
+  .tile:active { transform: scale(.985); }
+  .tile .mark { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #C3CCEB; display: grid; place-items: center; transition: background .18s, border-color .18s; }
+  .tile[role=checkbox] .mark { border-radius: 8px; }
+  .tile .mark svg { opacity: 0; transform: scale(.5); transition: .18s; }
+  .tile[aria-checked=true] { border-color: var(--b2); background: var(--soft); font-weight: 700; }
+  .tile[aria-checked=true] .mark { background: var(--b2); border-color: var(--b2); }
+  .tile[aria-checked=true] .mark svg { opacity: 1; transform: none; }
+  .tile kbd { margin-inline-start: auto; font: inherit; font-size: 12.5px; color: #9AA6D6; border: 1px solid var(--line); border-radius: 7px; padding: 1px 7px; }
+  @media (hover: none) { .tile kbd { display: none; } }
+  .otherin, textarea { width: 100%; font: inherit; font-size: 17.5px; padding: 14px 16px; border: 2px solid #CFD6EA; border-radius: 18px; color: var(--ink); background: #fff; }
+  .otherin { margin-top: 10px; }
+  textarea { min-height: 140px; resize: vertical; line-height: 1.8; }
+  textarea:focus, .otherin:focus { outline: none; border-color: var(--b2); box-shadow: 0 0 0 4px rgba(42,68,230,.12); }
+  .dict { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; border: 0; background: var(--soft); color: var(--b3); font-weight: 700; padding: 10px 16px; border-radius: 14px; cursor: pointer; }
+  .dict.rec { background: #FFF3C4; color: #7A5A00; }
+  .dict .dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+  .dict.rec .dot { animation: pulse 1s infinite; }
+  .tnav { display: flex; gap: 10px; align-items: center; margin-top: 22px; }
+  .btn { min-height: 56px; padding: 0 26px; border: 0; border-radius: 18px; font-weight: 700; font-size: 17.5px; cursor: pointer; background: var(--b2); color: #fff; box-shadow: 0 12px 26px rgba(42,68,230,.28); transition: transform .15s, opacity .2s; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:disabled { opacity: .45; cursor: default; transform: none; box-shadow: none; }
+  .btn.wide { flex: 1; }
+  .link { border: 0; background: none; color: var(--muted); font-weight: 600; cursor: pointer; padding: 10px 6px; text-decoration: underline; text-underline-offset: 4px; }
+  .err { color: #C62828; font-weight: 600; min-height: 1.3em; margin-top: 10px; font-size: 15px; }
+  .req { color: #C62828; font-size: 13.5px; font-weight: 600; margin-inline-start: 6px; white-space: nowrap; }
+
+  /* ================= done ================= */
+  #done { min-height: calc(100dvh - 64px); display: grid; place-items: center; text-align: center; padding: 0 16px 40px; }
+  #done h1 { font-size: clamp(32px, 7vw, 48px); margin: 16px 0 10px; outline: none; }
+  #done p { font-size: 19px; line-height: 1.9; color: rgba(255,255,255,.9); max-width: 32ch; margin: 0 auto 24px; }
+  .check { width: 108px; height: 108px; border-radius: 50%; background: #fff; color: var(--green); display: grid; place-items: center; margin: 0 auto; box-shadow: 0 24px 60px rgba(8,16,90,.35); animation: pop .5s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes pop { from { transform: scale(.4); opacity: 0; } }
+</style>
+</head>
+<body>
+<header>
+  <a href="/" aria-label="حَدَق، الصفحة الرئيسية"><img src="/img/logo-white.png" alt="حَدَق"></a>
+  <button class="pill" id="switchBtn" hidden></button>
+</header>
+
+<!-- ============ Start ============ -->
+<main id="start">
+  <div class="start-in">
+    <h1>استبيان حَدَق</h1>
+    <p>دقائق قليلة تساعدنا نبني حَدَق كما يحتاجه المكفوفون وضعاف البصر. اختر الطريقة الأنسب لك.</p>
+    <div class="choices">
+      <button class="choice" id="goVoice">
+        <span class="ic" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></span>
+        <span><strong>أجيب بصوتي</strong><span>للمكفوفين وضعاف البصر: تسمع كل سؤال وتجيب بالكلام، والشاشة كلها زر واحد.</span></span>
+        <svg class="arr" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <button class="choice alt" id="goTouch">
+        <span class="ic" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10"/><path d="M12 9.5a1.5 1.5 0 0 1 3 0V11"/><path d="M15 10.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-.6a6 6 0 0 1-4.6-2.2L4.2 15.6a1.5 1.5 0 0 1 2.2-2L9 16"/></svg></span>
+        <span><strong>أجيب باللمس</strong><span>أشوف الأسئلة وأختار إجابتي بنفسي. ويعمل أيضًا مع قارئ الشاشة.</span></span>
+        <svg class="arr" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+    </div>
+    <p class="note">الصوت يُحوَّل إلى نص لفهم إجابتك ولا يُحفظ. إجاباتك تصل لفريق حَدَق فقط.</p>
+  </div>
+</main>
+
+<!-- ============ Voice ============ -->
+<section id="voice" hidden aria-label="الاستبيان الصوتي">
+  <div class="vtop" aria-hidden="true"><div class="track"><i id="vprog"></i></div><span class="count" id="vcount"></span></div>
+  <button id="stage">
+    <span class="orb" id="orb" aria-hidden="true"><span class="core"><svg width="42" height="42" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></span></span>
+    <span class="state" id="vstate"></span>
+    <span class="vq" id="vq"></span>
+    <span class="chips" id="vchips" aria-hidden="true"></span>
+    <span class="heard" id="vheard"></span>
+  </button>
+  <div class="vbar">
+    <button class="pill" id="vRate" aria-label="سرعة الصوت"></button>
+    <button class="pill" id="vRepeat">أعد السؤال</button>
+    <button class="pill" id="vBack">السابق</button>
+  </div>
+</section>
+
+<!-- ============ Touch ============ -->
+<section id="touch" hidden aria-label="الاستبيان">
+  <div class="tshell">
+    <div class="ttop">
+      <button class="iconbtn" id="tBack" aria-label="السؤال السابق"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      <div class="track"><i id="tprog"></i></div>
+      <span class="count" id="tcount" aria-hidden="true"></span>
+    </div>
+    <div class="card"><div id="tcard"></div></div>
+  </div>
+</section>
+
+<!-- ============ Done ============ -->
+<main id="done" hidden>
+  <div>
+    <div class="check" aria-hidden="true"><svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17 19 7"/></svg></div>
+    <h1 tabindex="-1" id="doneH">شكرًا لك</h1>
+    <p>وصلتنا إجاباتك، وستساعدنا نبني حَدَق كما تحتاجه فعلًا.</p>
+    <a class="pill" href="/">تعرّف على حَدَق</a>
+  </div>
+</main>
+
+<div class="sr" aria-live="polite" id="live"></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const API = '/api/survey';
+  const isTest = new URLSearchParams(location.search).has('test');
+  let S = null, sid = null, voiceOk = false;
+  let idx = 0, answers = {}, usedVoice = false, usedTouch = false, mode = 'start';
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const announce = (t) => { const l = $('#live'); l.textContent = ''; setTimeout(() => { l.textContent = t; }, 50); };
+
+  const shown = (q) => !q.when || Object.entries(q.when).some(([k, vals]) => (answers[k]?.values || []).some((v) => vals.includes(v)));
+  const qList = () => S.questions.filter(shown);
+  const curQ = () => qList()[idx];
+
+  let starting = null;
+  function start() {
+    starting ||= (async () => {
+      const r = await fetch(`${API}/start`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      if (!r.ok) throw new Error('start');
+      const j = await r.json();
+      S = j.survey; sid = j.sid; voiceOk = j.voice;
+    })().catch((e) => { starting = null; throw e; });
+    return starting;
+  }
+  function show(id) {
+    for (const s of ['start', 'voice', 'touch', 'done']) $('#' + s).hidden = s !== id;
+    const sw = $('#switchBtn');
+    sw.hidden = !(id === 'voice' || id === 'touch');
+    sw.textContent = id === 'voice' ? 'أجيب باللمس بدلًا من ذلك' : 'أجيب بصوتي';
+  }
+
+  // =================================================================== audio out
+  let ac = null;
+  const actx = () => (ac ||= new (window.AudioContext || window.webkitAudioContext)());
+  function tone(freq = 880, ms = 130, vol = 0.16, type = 'sine') {
+    try {
+      const c = actx(), o = c.createOscillator(), g = c.createGain(), t = c.currentTime;
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + ms / 1000);
+      o.connect(g).connect(c.destination); o.start(t); o.stop(t + ms / 1000 + 0.02);
+    } catch {}
+    return wait(ms + 40);
+  }
+  const listenTone = async () => { await tone(784, 90); await tone(1046, 120); };
+  const doneTone = () => tone(523, 110, 0.1);
+  let thinkTimer = 0;
+  const thinking = (on) => { clearInterval(thinkTimer); if (on) thinkTimer = setInterval(() => tone(660, 70, 0.045), 850); };
+
+  // Every phrase is fetched once into memory, so playback starts instantly and never stutters.
+  const cache = new Map();
+  const urlFor = (t) => `${API}/tts.mp3?s=${sid}&t=${encodeURIComponent(t)}`;
+  function preload(text) {
+    if (!voiceOk || !text) return Promise.resolve(null);
+    if (!cache.has(text)) {
+      cache.set(text, fetch(urlFor(text)).then((r) => (r.ok ? r.blob() : null)).then((b) => (b ? URL.createObjectURL(b) : null)).catch(() => null));
+    }
+    return cache.get(text);
+  }
+  async function preloadAll() {
+    // In the order they'll be needed: each question, then its confirmations.
+    await preload(S.intro_say);
+    for (const q of S.questions) {
+      await preload(q.speak);
+      await Promise.all(Object.values(q.confirms).map(preload));
+      if (q === S.questions[0]) await Promise.all([S.phrases.noHear, S.phrases.skipped, S.phrases.more].map(preload));
+    }
+  }
+
+  const player = new Audio();
+  // Voice speed: fast readers can make it brisker; remembered on this device.
+  const RATES = [1, 1.25, 1.5];
+  let rate = 1.1;
+  try { const r = Number(localStorage.getItem('hadaq-survey-rate')); if (RATES.includes(r)) rate = r; } catch {}
+  function unlockAudio() {
+    actx().resume?.();
+    const n = 800, b = new ArrayBuffer(44 + n * 2), v = new DataView(b);
+    const w = (o, str) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+    player.src = URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+    player.play().catch(() => {});
+  }
+
+  let speakDone = null;
+  async function speak(text) {
+    stopSpeaking();
+    if (!text) return;
+    setOrb('speaking');
+    const token = {};
+    speakDone = token;
+    const local = await Promise.race([preload(text), wait(4000).then(() => null)]);
+    if (speakDone !== token) return; // interrupted while loading
+    return new Promise((resolve) => {
+      const finish = () => { if (speakDone === finish) { speakDone = null; resolve(); } };
+      speakDone = finish;
+      const device = () => {
+        if (!('speechSynthesis' in window)) return finish();
+        const u = new SpeechSynthesisUtterance(text); u.lang = 'ar-SA'; u.onend = finish; u.onerror = finish;
+        speechSynthesis.speak(u);
+      };
+      if (!voiceOk) return device();
+      player.onended = finish;
+      player.onerror = () => { player.onerror = null; if (speakDone === finish) device(); };
+      // Some browsers reset the speed when a new clip loads, so apply it again once it's ready.
+      const applyRate = () => { if (player.playbackRate !== rate) { player.defaultPlaybackRate = rate; player.playbackRate = rate; } };
+      player.onloadedmetadata = applyRate;
+      player.onplaying = applyRate;
+      player.src = local || urlFor(text);
+      applyRate();
+      player.play().catch(() => { if (speakDone === finish) device(); });
+    });
+  }
+  function stopSpeaking() {
+    try { player.pause(); } catch {}
+    try { speechSynthesis.cancel(); } catch {}
+    const d = speakDone; speakDone = null; if (typeof d === 'function') d();
+  }
+
+  // =================================================================== audio in
+  let stream = null;
+  // Reuse the microphone only while it is really live; some Android phones silently
+  // mute it after the page plays audio, so a stale one is replaced.
+  const micLive = () => !!stream && stream.getAudioTracks().some((t) => t.readyState === 'live' && !t.muted && t.enabled);
+  const dropMic = () => { try { stream?.getTracks().forEach((t) => t.stop()); } catch {} stream = null; };
+  async function micReady() {
+    if (micLive()) return true;
+    dropMic();
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: true } });
+      return true;
+    } catch { return false; }
+  }
+  const pickMime = () => ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'].find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported?.(m)) || '';
+  let stopRec = null, cancelRec = null;
+
+  /**
+   * Records one answer and resolves { blob, meta } (blob null only if cancelled).
+   * The level meter only decides WHEN to stop: the recording is always sent, so a
+   * phone whose meter reads silence (suspended audio, aggressive noise filters)
+   * still gets heard. A meter stuck at exact zero switches to a fixed recording time.
+   */
+  async function record({ pauseMs, maxMs, quietMs = 7000, deadWaitMs = 1500, onSpeech, onLevel }) {
+    const c = actx();
+    try { if (c.state !== 'running') await Promise.race([c.resume(), wait(400)]); } catch {}
+    return new Promise((resolve) => {
+      let src = null, an = null;
+      try { src = c.createMediaStreamSource(stream); an = c.createAnalyser(); an.fftSize = 1024; src.connect(an); } catch {}
+      const buf = new Float32Array(1024), mime = pickMime(), chunks = [];
+      let rec;
+      try {
+        // 24 kbps is plenty for speech and uploads ~5x faster on a weak connection.
+        rec = new MediaRecorder(stream, { ...(mime ? { mimeType: mime } : {}), audioBitsPerSecond: 24000 });
+        rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+        rec.start(200);
+      } catch {
+        try { src?.disconnect(); } catch {}
+        return resolve({ blob: null, meta: { failed: true } });
+      }
+      const t0 = performance.now();
+      // floor = the room's quiet level, learned in the first moments after the tone.
+      // Speech is judged RELATIVE to it, so a phone with a very quiet mic still works.
+      let floor = 0, calib = [], voiced = 0, spoke = false, lastVoice = 0, last = t0, timer = 0, ended = false;
+      let max = 0, nonZero = false;
+      const meta = () => ({ spoke, max: +max.toFixed(4), floor: +floor.toFixed(4), dead: !nonZero, ctx: c.state, ms: Math.round(performance.now() - t0) });
+      const end = (keep) => {
+        if (ended) return; ended = true;
+        clearInterval(timer); stopRec = cancelRec = null;
+        try { src?.disconnect(); } catch {}
+        onLevel?.(0);
+        const m = meta();
+        rec.onstop = () => resolve({ blob: keep && chunks.length ? new Blob(chunks, { type: rec.mimeType || mime || 'audio/webm' }) : null, meta: m });
+        try { rec.stop(); } catch { resolve({ blob: null, meta: m }); }
+      };
+      stopRec = () => end(true);
+      cancelRec = () => end(false);
+      // A timer, not animation frames: frames stop when the screen sleeps.
+      timer = setInterval(() => {
+        const now = performance.now(), t = now - t0, dt = now - last; last = now;
+        let rms = 0;
+        if (an) { an.getFloatTimeDomainData(buf); let sum = 0; for (const v of buf) { sum += v * v; if (v !== 0) nonZero = true; } rms = Math.sqrt(sum / buf.length); }
+        if (rms > max) max = rms;
+        if (t < 300) { calib.push(rms); floor = calib.slice().sort((a, b) => a - b)[Math.floor(calib.length / 2)]; }
+        else if (rms < floor) floor = floor * 0.9 + rms * 0.1; // the room got quieter
+        const thr = Math.max(floor * 2.6, 0.0025);
+        if (t >= 300 && rms > thr) { voiced += dt; lastVoice = t; if (!spoke && voiced > 150) { spoke = true; onSpeech?.(); } }
+        else voiced = Math.max(0, voiced - dt * 0.5);
+        onLevel?.(Math.min(1, (rms / Math.max(thr * 4, 0.02))));
+        const dead = t > 900 && !nonZero;
+        if (spoke && t - lastVoice > pauseMs) return end(true);
+        if (!spoke && !dead && t > quietMs) return end(true); // sent anyway; the server decides
+        if (dead && t > deadWaitMs) return end(true); // the mic gives nothing at all: stop, replace it
+        if (t > maxMs) return end(true);
+      }, 50);
+    });
+  }
+  const toB64 = (blob) => new Promise((r) => { const f = new FileReader(); f.onload = () => r(String(f.result).split(',')[1] || ''); f.readAsDataURL(blob); });
+  async function turn(q, blob, meta) {
+    const r = await fetch(`${API}/turn`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sid, qid: q.id, mime: blob.type, audio_b64: await toB64(blob), meta, adding: adding === q.id }) });
+    if (!r.ok) throw new Error(String(r.status));
+    return r.json();
+  }
+
+  // =================================================================== voice mode
+  const setOrb = (s) => { $('#orb').className = `orb ${s || ''}`; };
+  const setState = (t) => { $('#vstate').textContent = t; };
+  const level = (x) => $('#orb').style.setProperty('--lv', (1 + x * 0.45).toFixed(3));
+  function renderVoice() {
+    const list = qList(), q = list[idx];
+    $('#vcount').textContent = `السؤال ${idx + 1} من ${list.length}`;
+    $('#vprog').style.width = `${(idx / list.length) * 100}%`;
+    $('#vq').textContent = q.q;
+    $('#vchips').innerHTML = (q.options || []).map((o) => `<span class="chip${(answers[q.id]?.values || []).includes(o.v) ? ' on' : ''}">${esc(o.say)}</span>`).join('');
+    $('#stage').setAttribute('aria-label', `${q.q}. المس الشاشة للإجابة.`);
+  }
+
+  // `run` invalidates older async steps whenever the user taps or switches.
+  let run = 0, phase = 'idle', silences = 0;
+  async function ask(read = true) {
+    const my = ++run;
+    adding = null; addCount = 0;
+    renderVoice(); $('#vheard').textContent = '';
+    if (read) {
+      phase = 'speaking'; setState('المس الشاشة لتجيب الآن');
+      await speak(curQ().speak);
+      if (my !== run) return;
+    }
+    return hear(my);
+  }
+
+  let micRetries = 0, adding = null, addCount = 0;
+  async function hear(my) {
+    const q = curQ();
+    phase = 'listening';
+    if (!micLive()) await micReady();
+    await listenTone();
+    if (my !== run) return;
+    setOrb('listening'); setState('تكلّم…');
+    const lists = q.type === 'multi' || q.type === 'text';
+    const { blob, meta } = await record({
+      // Lists and free answers have natural pauses between items; don't cut them off.
+      pauseMs: q.type === 'text' ? 2300 : q.type === 'multi' ? 2100 : 1100,
+      quietMs: lists ? 11000 : 7000,
+      maxMs: q.type === 'text' ? 60000 : 30000,
+      deadWaitMs: micRetries ? 9000 : 1500,
+      onSpeech: () => setState('أسمعك…'),
+      onLevel: level,
+    });
+    if (my !== run) return;
+    if (meta.failed) {
+      // The recorder wouldn't start (the phone released the mic): take a fresh one and retry once.
+      dropMic();
+      if (!micRetries++ && await micReady()) return hear(my);
+      micRetries = 0; phase = 'idle';
+      await speak(S.phrases.error); setOrb(''); setState('المس الشاشة للمحاولة'); return;
+    }
+    if (!blob) return;
+    // The mic delivered nothing at all: replace it and listen again (once) instead of sending silence.
+    if (meta.dead && !micRetries) {
+      micRetries++;
+      dropMic();
+      return hear(my);
+    }
+    if (!meta.dead) micRetries = 0;
+    doneTone();
+    phase = 'thinking'; setOrb('thinking'); setState('لحظة…'); thinking(true);
+    let res;
+    try { res = await turn(q, blob, meta); } catch {
+      thinking(false);
+      if (my !== run) return;
+      phase = 'idle'; await speak(S.phrases.error); setOrb(''); setState('المس الشاشة للمحاولة'); return;
+    }
+    thinking(false);
+    if (my !== run) return;
+    usedVoice = true;
+    if (res.action !== 'silence') silences = 0;
+    $('#vheard').textContent = res.heard ? `«${res.heard}»` : '';
+    const nextQ = () => qList()[idx + 1];
+    // After «تضيف شيئًا آخر؟»: a no, silence, or anything unclear simply moves on.
+    if (adding === q.id && ['done', 'skip', 'silence', 'unclear', 'clarify'].includes(res.action)) {
+      adding = null;
+      return next();
+    }
+    switch (res.action) {
+      case 'answer': {
+        if (q.type === 'text') answers[q.id] = { text: res.text };
+        else if (q.type === 'multi' && adding === q.id) {
+          // Add to what was already said for this question.
+          const prev = answers[q.id] || { values: [] };
+          const values = [...new Set([...(prev.values || []), ...(res.values || [])])];
+          const other = [prev.other, res.other].filter(Boolean).join('، ');
+          answers[q.id] = { values, ...(other ? { other } : {}) };
+        } else answers[q.id] = { values: res.values || [], ...(res.other ? { other: res.other } : {}) };
+        renderVoice();
+        preload(nextQ()?.speak);
+        await speak(res.say);
+        if (my !== run) return;
+        // Lists: people pause to think between items, so ask for more instead of guessing they're done.
+        const allPicked = q.type === 'multi' && (answers[q.id].values || []).length >= q.options.length;
+        if (q.type === 'multi' && !allPicked && addCount < 3) {
+          adding = q.id; addCount++;
+          await speak(S.phrases.more);
+          return my === run ? hear(my) : undefined;
+        }
+        adding = null;
+        return next();
+      }
+      case 'skip':
+        delete answers[q.id];
+        await speak(S.phrases.skipped);
+        return my === run ? next() : undefined;
+      case 'back':
+        if (idx === 0) { await speak(S.phrases.first); return my === run ? hear(my) : undefined; }
+        idx--; return ask();
+      case 'repeat':
+        adding = null; return ask();
+      case 'silence':
+        silences++;
+        setOrb(''); setState('لم أسمع');
+        if (silences >= 2) { silences = 0; phase = 'idle'; await speak(S.phrases.waitTap); setOrb(''); setState('المس الشاشة للإجابة'); return; }
+        await speak(S.phrases.noHear); return my === run ? hear(my) : undefined;
+      default:
+        await speak(res.say || q.speak); return my === run ? hear(my) : undefined;
+    }
+  }
+  function next() {
+    adding = null; addCount = 0;
+    if (idx < qList().length - 1) { idx++; return ask(); }
+    return finish();
+  }
+
+  $('#stage').addEventListener('click', () => {
+    if (phase === 'thinking' || phase === 'sending') return;
+    if (phase === 'retry') return finish();
+    if (phase === 'intro') { run++; stopSpeaking(); return ask(); }
+    if (phase === 'speaking') { run++; stopSpeaking(); return hear(run); }
+    if (phase === 'listening') { stopRec?.(); return; }
+    if (phase === 'idle') { const my = ++run; return hear(my); }
+  });
+  const rateLabel = () => { $('#vRate').textContent = `السرعة ×${rate === 1.1 ? 1 : rate}`; };
+  rateLabel();
+  $('#vRate').onclick = (e) => {
+    e.stopPropagation();
+    const cur = rate === 1.1 ? 0 : RATES.indexOf(rate);
+    rate = RATES[(cur + 1) % RATES.length];
+    if (rate === 1) rate = 1.1; // "×1" is the natural, slightly brisk default
+    player.defaultPlaybackRate = rate; player.playbackRate = rate;
+    try { localStorage.setItem('hadaq-survey-rate', String(rate)); } catch {}
+    rateLabel();
+  };
+  const interrupt = () => { run++; cancelRec?.(); stopSpeaking(); thinking(false); };
+  $('#vRepeat').onclick = (e) => { e.stopPropagation(); if (phase !== 'thinking') { interrupt(); ask(); } };
+  $('#vBack').onclick = (e) => { e.stopPropagation(); if (phase !== 'thinking') { interrupt(); if (idx > 0) idx--; ask(); } };
+
+  async function startVoice(withIntro) {
+    if (!window.MediaRecorder || !(await micReady())) {
+      startTouch();
+      $('#terr').textContent = 'لم يُسمح باستخدام الميكروفون، فانتقلنا إلى الإجابة باللمس.';
+      announce('لم يُسمح باستخدام الميكروفون، فانتقلنا إلى الإجابة باللمس.');
+      return;
+    }
+    mode = 'voice'; show('voice'); $('#stage').focus();
+    renderVoice();
+    if (withIntro) {
+      phase = 'intro'; setState('المس الشاشة لتبدأ مباشرة');
+      const my = ++run;
+      await speak(S.intro_say);
+      if (my === run) ask();
+    } else ask();
+  }
+
+  // =================================================================== touch mode
+  let dir = 1;
+  const tick = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17 19 7"/></svg>';
+  function renderTouch() {
+    const list = qList(), q = list[idx], a = answers[q.id] || {};
+    $('#tcount').textContent = `${idx + 1} / ${list.length}`;
+    $('#tprog').style.width = `${(idx / list.length) * 100}%`;
+    $('#tBack').disabled = idx === 0;
+    const multi = q.type === 'multi', lastQ = idx === list.length - 1;
+    let h = `<div class="slide${dir < 0 ? ' back' : ''}"><div class="qnum">السؤال ${idx + 1} من ${list.length}</div>
+      <h2 class="tq" id="tq" tabindex="-1">${esc(q.q.replace(/ اذكر كل .*$| احكِ لي .*$/, ''))}${q.required ? '<span class="req">مطلوب</span>' : ''}</h2>`;
+    if (q.type === 'text') {
+      h += `<p class="hint">اكتب بكلماتك، أو اضغط زر التسجيل وتكلّم.</p>
+        <label class="sr" for="tt">إجابتك</label><textarea id="tt" placeholder="اكتب هنا…">${esc(a.text || '')}</textarea>
+        <button type="button" class="dict" id="dict"><span class="dot"></span><span id="dictL">سجّل إجابتك بصوتك</span></button>`;
+    } else {
+      h += `<p class="hint">${multi ? 'اختر كل ما ينطبق عليك.' : 'اختر إجابة واحدة.'}</p>
+        <div class="tiles${q.options.length > 3 && q.options.every((o) => o.say.length < 22) ? ' two' : ''}" role="${multi ? 'group' : 'radiogroup'}" aria-labelledby="tq">`;
+      q.options.forEach((o, i) => {
+        h += `<button type="button" class="tile" role="${multi ? 'checkbox' : 'radio'}" aria-checked="${(a.values || []).includes(o.v)}" data-i="${i}"><span class="mark">${tick}</span>${esc(o.say)}<kbd>${i + 1}</kbd></button>`;
+      });
+      if (q.other) h += `<button type="button" class="tile" role="${multi ? 'checkbox' : 'radio'}" aria-checked="${!!a.other}" data-i="other"><span class="mark">${tick}</span>شيء آخر</button>`;
+      h += '</div>';
+      if (q.other) h += `<label class="sr" for="toth">اذكر ما تقصده</label><input class="otherin" id="toth" placeholder="اذكره هنا…" value="${esc(a.other || '')}" ${a.other ? '' : 'hidden'}>`;
+    }
+    // Single-choice questions advance on tap; the others need the button.
+    const showNext = multi || q.type === 'text' || lastQ || !!a.other || !!(a.values || []).length;
+    h += `<div class="err" id="terr" role="alert"></div><div class="tnav">
+      <button type="button" class="btn wide" id="tNext" ${showNext ? '' : 'hidden'}>${lastQ ? 'إرسال الإجابات' : 'التالي'}</button>
+      ${!q.required ? '<button type="button" class="link" id="tSkip">تخطَّ</button>' : ''}</div></div>`;
+    $('#tcard').innerHTML = h;
+    wireTouch(q);
+    requestAnimationFrame(() => $('#tq').focus({ preventScroll: true }));
+  }
+
+  function wireTouch(q) {
+    const tiles = [...document.querySelectorAll('.tile')], oth = $('#toth');
+    tiles.forEach((t) => t.onclick = () => {
+      const multi = q.type === 'multi';
+      if (multi) t.setAttribute('aria-checked', t.getAttribute('aria-checked') !== 'true');
+      else tiles.forEach((x) => x.setAttribute('aria-checked', x === t));
+      $('#terr').textContent = '';
+      const otherOn = tiles.some((x) => x.dataset.i === 'other' && x.getAttribute('aria-checked') === 'true');
+      if (oth) { oth.hidden = !otherOn; if (otherOn && t.dataset.i === 'other') oth.focus(); }
+      if (!multi && t.dataset.i !== 'other' && idx < qList().length - 1) {
+        const a = read(q); if (a && !a.error) answers[q.id] = a;
+        usedTouch = true;
+        setTimeout(() => { if (curQ() === q && mode === 'touch') { dir = 1; idx++; renderTouch(); } }, 260);
+      } else $('#tNext').hidden = false;
+    });
+    $('#tNext').onclick = () => {
+      const a = read(q);
+      if (a?.error) { $('#terr').textContent = a.error; return; }
+      if (!a && q.required) { $('#terr').textContent = 'هذا السؤال مطلوب.'; return; }
+      if (a) answers[q.id] = a; else delete answers[q.id];
+      usedTouch = true; dir = 1;
+      if (idx < qList().length - 1) { idx++; renderTouch(); } else finish();
+    };
+    if ($('#tSkip')) $('#tSkip').onclick = () => { delete answers[q.id]; dir = 1; if (idx < qList().length - 1) { idx++; renderTouch(); } else finish(); };
+    if ($('#dict')) $('#dict').onclick = dictate;
+  }
+
+  function read(q) {
+    if (q.type === 'text') { const t = ($('#tt')?.value || '').trim(); return t ? { text: t } : null; }
+    const on = [...document.querySelectorAll('.tile[aria-checked=true]')].map((t) => t.dataset.i);
+    const values = on.filter((i) => i !== 'other').map((i) => q.options[Number(i)].v);
+    const other = on.includes('other') ? ($('#toth')?.value || '').trim() : '';
+    if (on.includes('other') && !other) return { error: 'اكتب ما تقصده في خانة «شيء آخر».' };
+    return values.length || other ? { values, ...(other ? { other } : {}) } : null;
+  }
+
+  // Dictation for written answers: record, transcribe, put the words in the box.
+  let dictating = false;
+  async function dictate() {
+    const b = $('#dict'), L = $('#dictL');
+    if (dictating) { stopRec?.(); return; }
+    if (!window.MediaRecorder || !(await micReady())) { $('#terr').textContent = 'لم يُسمح باستخدام الميكروفون.'; return; }
+    dictating = true; b.classList.add('rec'); L.textContent = 'أسمعك… اضغط للإيقاف';
+    const q = curQ();
+    const { blob, meta } = await record({ pauseMs: 2300, maxMs: 60000, quietMs: 11000, deadWaitMs: 9000 });
+    b.classList.remove('rec');
+    if (!blob) { dictating = false; L.textContent = 'سجّل إجابتك بصوتك'; return; }
+    L.textContent = 'أكتب ما قلته…';
+    try {
+      const res = await turn(q, blob, meta);
+      const ta = $('#tt');
+      if (ta && (res.text || res.heard)) { ta.value = [ta.value.trim(), res.text || res.heard].filter(Boolean).join(' '); ta.focus(); }
+      L.textContent = res.heard ? 'أضف بصوتك' : 'لم أسمع، جرّب مرة أخرى';
+    } catch { L.textContent = 'تعذّر، جرّب مرة أخرى'; }
+    dictating = false;
+  }
+
+  $('#tBack').onclick = () => { if (idx > 0) { const q = curQ(), a = read(q); if (a && !a.error) answers[q.id] = a; dir = -1; idx--; renderTouch(); } };
+  document.addEventListener('keydown', (e) => {
+    if (mode !== 'touch' || /TEXTAREA|INPUT/.test(document.activeElement?.tagName)) return;
+    const n = Number(e.key);
+    if (n >= 1 && n <= 9) document.querySelectorAll('.tile')[n - 1]?.click();
+  });
+
+  function startTouch() { mode = 'touch'; show('touch'); dir = 1; renderTouch(); }
+
+  // =================================================================== switch + finish
+  $('#switchBtn').onclick = async () => {
+    if (mode === 'voice') { interrupt(); startTouch(); }
+    else if (mode === 'touch') {
+      const q = curQ(), a = read(q); if (a && !a.error) answers[q.id] = a;
+      unlockAudio(); preloadAll(); startVoice(false);
+    }
+  };
+
+  let sending = false;
+  async function finish() {
+    if (sending) return;
+    const missing = qList().findIndex((q) => q.required && !answers[q.id]);
+    if (missing >= 0) {
+      idx = missing;
+      if (mode === 'touch') { renderTouch(); $('#terr').textContent = 'هذا السؤال مطلوب قبل الإرسال.'; return; }
+      return ask();
+    }
+    sending = true;
+    if (mode === 'voice') { phase = 'sending'; setOrb('thinking'); setState('أرسل إجاباتك…'); $('#vprog').style.width = '100%'; }
+    else { const b = $('#tNext'); if (b) { b.disabled = true; b.textContent = 'جارٍ الإرسال…'; } }
+    const keep = new Set(qList().map((q) => q.id));
+    const body = { sid, test: isTest, mode: usedVoice && usedTouch ? 'mixed' : usedVoice ? 'voice' : 'text',
+      answers: Object.fromEntries(Object.entries(answers).filter(([k]) => keep.has(k))) };
+    try {
+      const r = await fetch(`${API}/submit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) throw new Error(String(r.status));
+    } catch {
+      sending = false;
+      if (mode === 'touch') { const b = $('#tNext'); if (b) { b.disabled = false; b.textContent = 'إرسال الإجابات'; } $('#terr').textContent = 'تعذّر الإرسال. تحقق من الاتصال وحاول مرة أخرى.'; return; }
+      phase = 'retry'; await speak(S.phrases.notSaved); setOrb(''); setState('المس الشاشة لإعادة الإرسال'); return;
+    }
+    const wasVoice = mode === 'voice';
+    mode = 'done'; show('done'); $('#doneH').focus();
+    if (wasVoice) speak(S.outro_say);
+  }
+
+  // =================================================================== start
+  $('#goVoice').onclick = async () => {
+    $('#goVoice').disabled = true;
+    unlockAudio();
+    try { await start(); } catch { $('#goVoice').disabled = false; alert('تعذّر الاتصال. حاول مرة أخرى.'); return; }
+    preloadAll();
+    await startVoice(true);
+    $('#goVoice').disabled = false;
+  };
+  // Start loading the voice as soon as the page opens, so the first questions are ready
+  // by the time someone taps «أجيب بصوتي» (or skips the intro).
+  start().then(() => { preload(S.intro_say); preload(S.questions[0].speak); preload(S.questions[1].speak); }).catch(() => {});
+
+  $('#goTouch').onclick = async () => {
+    try { await start(); } catch { alert('تعذّر الاتصال. حاول مرة أخرى.'); return; }
+    startTouch();
+  };
+})();
+</script>
+</body>
+</html>

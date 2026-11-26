@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="a11y_label">حَدَق — إرسال واتساب</string>
+    <string name="a11y_summary">يضغط زر الإرسال في واتساب بعد أن تؤكد الرسالة بصوتك في حَدَق</string>
+    <string name="a11y_description">يسمح لحَدَق بالضغط على زر الإرسال في واتساب فقط، وفقط بعد أن تملي الرسالة وتقول «نعم» لتأكيدها. لا يقرأ حَدَق محادثاتك ولا يحفظ شيئًا من التطبيقات الأخرى.</string>
+</resources>

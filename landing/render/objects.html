@@ -1,0 +1,213 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Hadaq 3D objects</title>
+<style>html,body{margin:0;background:transparent}canvas{display:block}</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<script type="module">
+// Renders one glossy "clay" 3D object for the Hadaq landing page.
+// Usage: objects.html?o=orb|eye|pin|bubble|sos|camera|phone  — screenshot with a transparent background.
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const S = 1024;
+const which = new URLSearchParams(location.search).get('o') || 'orb';
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(S, S);
+renderer.setClearColor(0x000000, 0);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+camera.position.set(0, 0, 9);
+
+const key = new THREE.DirectionalLight(0xffffff, 1.6);
+key.position.set(-3, 5, 6);
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x9fc4ff, 1.2);
+rim.position.set(4, -2, -3);
+scene.add(rim);
+scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+
+// Brand clay materials
+const blue = new THREE.MeshPhysicalMaterial({ color: 0x3d7dff, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.18, sheen: 0.4, sheenColor: 0x9cc2ff });
+const deep = new THREE.MeshPhysicalMaterial({ color: 0x1b3fa8, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.2 });
+const white = new THREE.MeshPhysicalMaterial({ color: 0xf4f7ff, roughness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.25, sheen: 0.5, sheenColor: 0xdde8ff });
+const red = new THREE.MeshPhysicalMaterial({ color: 0xff4d5a, roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.15 });
+const ink = new THREE.MeshPhysicalMaterial({ color: 0x0d1a4a, roughness: 0.2, clearcoat: 1 });
+
+const group = new THREE.Group();
+scene.add(group);
+
+function capsuleBar(h, r = 0.075) {
+  const g = new THREE.CapsuleGeometry(r, Math.max(0.01, h - 2 * r), 8, 24);
+  return new THREE.Mesh(g, white);
+}
+
+function lathe(points, mat, seg = 96) {
+  return new THREE.Mesh(new THREE.LatheGeometry(points.map(([x, y]) => new THREE.Vector2(x, y)), seg), mat);
+}
+
+const builders = {
+  // The voice orb from the app, with white sound bars.
+  orb() {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(1.45, 96, 96), blue);
+    group.add(s);
+    const hs = [0.35, 0.6, 0.95, 1.3, 0.95, 0.6, 0.35];
+    hs.forEach((h, i) => {
+      const b = capsuleBar(h, 0.085);
+      b.position.set((i - 3) * 0.26, 0, 1.38);
+      group.add(b);
+    });
+    group.rotation.set(-0.1, 0.18, 0.04);
+  },
+  // The eye from the logo.
+  eye() {
+    const shape = new THREE.Shape();
+    const w = 1.9, h = 1.05;
+    shape.moveTo(-w, 0);
+    shape.quadraticCurveTo(0, h * 1.9, w, 0);
+    shape.quadraticCurveTo(0, -h * 1.9, -w, 0);
+    const lid = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: 0.35, bevelEnabled: true, bevelThickness: 0.22, bevelSize: 0.18, bevelSegments: 12, curveSegments: 64 }), white);
+    lid.position.z = -0.4;
+    group.add(lid);
+    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.78, 64, 64), blue);
+    iris.scale.z = 0.55;
+    iris.position.z = 0.25;
+    group.add(iris);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.4, 48, 48), ink);
+    pupil.scale.z = 0.5;
+    pupil.position.z = 0.62;
+    group.add(pupil);
+    const glint = new THREE.Mesh(new THREE.SphereGeometry(0.13, 32, 32), white);
+    glint.position.set(0.22, 0.22, 0.78);
+    group.add(glint);
+    group.rotation.set(0.25, -0.45, -0.08);
+  },
+  // Location pin.
+  pin() {
+    const pts = [];
+    for (let i = 0; i <= 40; i++) {
+      const t = i / 40;
+      const a = Math.PI * t;
+      // teardrop: round top, sharp bottom
+      const r = Math.sin(a) * (1 - 0.55 * Math.pow(1 - t, 3)) * 1.05;
+      const y = Math.cos(a) * 1.05 + (t > 0.5 ? -Math.pow((t - 0.5) * 2, 2) * 1.35 : 0);
+      pts.push([Math.max(0.0001, r), y + 0.4]);
+    }
+    const body = lathe(pts.reverse(), blue);
+    group.add(body);
+    const hole = new THREE.Mesh(new THREE.SphereGeometry(0.42, 48, 48), white);
+    hole.scale.z = 0.6;
+    hole.position.set(0, 0.55, 0.78);
+    group.add(hole);
+    const base = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.09, 24, 96), white);
+    base.rotation.x = Math.PI / 2;
+    base.position.y = -1.55;
+    group.add(base);
+    group.rotation.set(0.18, 0.5, 0.06);
+  },
+  // Speech bubble with three dots.
+  bubble() {
+    const box = new THREE.Mesh(new RoundedBoxGeometry(3, 1.75, 0.7, 10, 0.35), white);
+    group.add(box);
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.7, 32), white);
+    tail.rotation.z = Math.PI * 0.82;
+    tail.position.set(0.85, -1.05, 0);
+    group.add(tail);
+    [-0.75, 0, 0.75].forEach((x) => {
+      const d = new THREE.Mesh(new THREE.SphereGeometry(0.24, 48, 48), blue);
+      d.position.set(x, 0, 0.38);
+      group.add(d);
+    });
+    const badge = new THREE.Mesh(new THREE.SphereGeometry(0.22, 48, 48), deep);
+    badge.position.set(-1.45, 0.92, 0.2);
+    group.add(badge);
+    group.rotation.set(0.2, -0.5, 0.12);
+  },
+  // SOS button.
+  sos() {
+    const base = lathe([[0.0001, -0.3], [1.55, -0.3], [1.7, -0.18], [1.72, 0.05], [1.6, 0.18], [0.0001, 0.18]], white);
+    group.add(base);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.22, 0.1, 24, 120), deep);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 0.2;
+    group.add(ring);
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(1.05, 96, 64, 0, Math.PI * 2, 0, Math.PI / 2.4), red);
+    dome.scale.y = 0.55;
+    dome.position.y = 0.15;
+    group.add(dome);
+    group.rotation.set(0.75, 0.2, -0.12);
+  },
+  // Camera.
+  camera() {
+    const body = new THREE.Mesh(new RoundedBoxGeometry(3.1, 2.1, 1.1, 10, 0.42), white);
+    group.add(body);
+    const top = new THREE.Mesh(new RoundedBoxGeometry(1.0, 0.45, 0.8, 6, 0.18), white);
+    top.position.set(-0.75, 1.12, 0);
+    group.add(top);
+    const lensRing = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.86, 0.35, 96), blue);
+    lensRing.rotation.x = Math.PI / 2;
+    lensRing.position.z = 0.62;
+    group.add(lensRing);
+    const lens = new THREE.Mesh(new THREE.SphereGeometry(0.58, 64, 64), ink);
+    lens.scale.z = 0.45;
+    lens.position.z = 0.8;
+    group.add(lens);
+    const glint = new THREE.Mesh(new THREE.SphereGeometry(0.12, 32, 32), white);
+    glint.position.set(0.2, 0.2, 1.02);
+    group.add(glint);
+    const flash = new THREE.Mesh(new THREE.SphereGeometry(0.15, 32, 32), blue);
+    flash.position.set(1.05, 0.62, 0.55);
+    group.add(flash);
+    group.rotation.set(0.18, -0.55, 0.06);
+  },
+  // Phone (call / message).
+  phone() {
+    const body = new THREE.Mesh(new RoundedBoxGeometry(1.7, 3.2, 0.32, 10, 0.3), white);
+    group.add(body);
+    const screen = new THREE.Mesh(new RoundedBoxGeometry(1.42, 2.75, 0.05, 6, 0.18), blue);
+    screen.position.z = 0.17;
+    group.add(screen);
+    const hs = [0.25, 0.45, 0.7, 0.45, 0.25];
+    hs.forEach((h, i) => {
+      const b = capsuleBar(h, 0.05);
+      b.position.set((i - 2) * 0.18, 0.1, 0.24);
+      group.add(b);
+    });
+    group.rotation.set(0.15, 0.55, -0.12);
+  },
+};
+
+(builders[which] || builders.orb)();
+
+// Fit the object to the frame.
+const box = new THREE.Box3().setFromObject(group);
+const size = box.getSize(new THREE.Vector3());
+const center = box.getCenter(new THREE.Vector3());
+group.position.sub(center);
+const maxDim = Math.max(size.x, size.y);
+camera.position.z = (maxDim / 2) / Math.tan((camera.fov / 2) * Math.PI / 180) * 1.28;
+camera.updateProjectionMatrix();
+
+renderer.render(scene, camera);
+window.__done = true;
+</script>
+</body>
+</html>

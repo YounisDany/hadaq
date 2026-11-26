@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>كن مختبِرًا لحَدَق</title>
+<meta name="description" content="انضم لمختبِري حَدَق — المساعد الصوتي للمكفوفين وضعاف البصر — وجرّبه قبل الجميع من Google Play.">
+<meta name="theme-color" content="#1F3BD8">
+<meta property="og:title" content="كن مختبِرًا لحَدَق">
+<meta property="og:description" content="سجّل إيميلك، وانضم، وحمّل التطبيق من Google Play قبل الجميع.">
+<meta property="og:image" content="/img/app-icon.png">
+<link rel="icon" href="/img/app-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --b1:#3D63FF; --b2:#2A44E6; --b3:#1C2CB8; --ink:#0E1640; --muted:#4A5585; --line:#E1E6F7; --green:#1f9d55; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif; color: #fff; min-height: 100vh;
+    background: radial-gradient(1000px 600px at 15% 0%, rgba(255,255,255,.16), transparent 60%), linear-gradient(180deg, var(--b1), var(--b2) 60%, var(--b3)); }
+  .wrap { width: min(1080px, 100% - 32px); margin-inline: auto; }
+  :focus-visible { outline: 3px solid #FFD54A; outline-offset: 3px; border-radius: 12px; }
+  header { display: flex; justify-content: space-between; align-items: center; height: 80px; }
+  header img { height: 32px; }
+  header a.home { color: #fff; text-decoration: none; opacity: .85; font-weight: 600; }
+  .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; padding: 20px 0 50px; }
+  h1 { font-size: clamp(38px, 5.6vw, 64px); line-height: 1.15; margin: 0 0 16px; }
+  h1 span { color: #CFE0FF; }
+  .lead { font-size: 19px; line-height: 1.85; color: rgba(255,255,255,.88); margin: 0 0 22px; max-width: 40ch; }
+  .counter { display: inline-flex; align-items: center; gap: 12px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 8px 16px; font-weight: 600; }
+  .bar { width: 140px; height: 8px; background: rgba(255,255,255,.2); border-radius: 8px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: #fff; width: 0; transition: width .8s; }
+  .art { position: relative; aspect-ratio: 1; max-width: 420px; justify-self: center; width: 100%; }
+  .art img { position: absolute; filter: drop-shadow(0 26px 34px rgba(8,16,90,.4)); }
+  .float { animation: float 7s ease-in-out infinite; }
+  .float.d2 { animation-delay: -2.5s; } .float.d3 { animation-delay: -4.5s; }
+  @keyframes float { 0%,100% { translate: 0 0; } 50% { translate: 0 -16px; } }
+  @media (prefers-reduced-motion: reduce) { .float { animation: none; } }
+
+  .card { background: #fff; color: var(--ink); border-radius: 32px; padding: clamp(24px, 4vw, 44px); box-shadow: 0 40px 90px rgba(8,16,90,.35); margin-bottom: 60px; }
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+  .step { display: grid; grid-template-columns: 52px 1fr; gap: 16px; align-items: start; padding: 18px; border: 1.5px solid var(--line); border-radius: 22px; transition: border-color .3s, background .3s, opacity .3s; }
+  .step.locked { opacity: .5; }
+  .step.done { border-color: #bfe6cf; background: #f3fbf6; }
+  .step.active { border-color: var(--b2); background: #f3f6ff; }
+  .n { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; font-weight: 700; font-size: 20px; background: #eef1fb; color: var(--b3); }
+  .step.done .n { background: var(--green); color: #fff; }
+  .step.active .n { background: var(--b2); color: #fff; }
+  .step h2 { margin: 2px 0 6px; font-size: 21px; }
+  .step p { margin: 0 0 12px; color: var(--muted); line-height: 1.8; font-size: 16px; }
+  label { display: block; font-weight: 600; font-size: 14.5px; margin: 10px 0 6px; }
+  input { width: 100%; font: inherit; padding: 13px 14px; border: 1.5px solid #cfd6ea; border-radius: 14px; color: var(--ink); background: #fff; }
+  input:focus { outline: 2px solid var(--b2); border-color: transparent; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 22px; border: 0; border-radius: 16px; font: inherit; font-weight: 700; font-size: 16.5px; cursor: pointer; text-decoration: none; background: var(--b2); color: #fff; box-shadow: 0 12px 28px rgba(42,68,230,.3); transition: transform .2s; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn[aria-disabled=true] { background: #c9d0e8; box-shadow: none; pointer-events: none; }
+  .btn:disabled { background: #e3f6ea; box-shadow: none; cursor: default; transform: none; }
+  .btn.ghost { background: #eef1fb; color: var(--b3); box-shadow: none; }
+  .err { color: #c62828; font-weight: 600; margin-top: 8px; min-height: 1em; }
+  .hint { font-size: 14px; color: var(--muted); margin-top: 8px; }
+  .ok { color: var(--green); font-weight: 700; }
+  footer { text-align: center; color: rgba(255,255,255,.75); padding: 0 0 40px; font-size: 14.5px; }
+  footer a { color: #fff; }
+  @media (max-width: 860px) { .hero { grid-template-columns: 1fr; } .art { max-width: 300px; order: -1; } .lead { max-width: none; } }
+  @media (max-width: 560px) { .row { grid-template-columns: 1fr; } .step { grid-template-columns: 1fr; } .btn { width: 100%; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a href="/" aria-label="حَدَق — الصفحة الرئيسية"><img src="/img/logo-white.png" alt="حَدَق"></a>
+    <a class="home" href="/">تعرّف على حَدَق</a>
+  </header>
+
+  <section class="hero">
+    <div>
+      <h1>كن من أوائل<br><span>مختبِري حَدَق</span></h1>
+      <p class="lead">جرّب المساعد الصوتي للمكفوفين وضعاف البصر قبل الجميع من Google Play، وساعدنا بملاحظاتك. ثلاث خطوات، دقيقتان فقط.</p>
+      <div class="counter" aria-live="polite"><span id="cnt">…</span><span class="bar" aria-hidden="true"><i id="bar"></i></span></div>
+    </div>
+    <div class="art" aria-hidden="true">
+      <img src="/img/orb.webp" alt="" style="width:62%;left:19%;top:18%" class="float">
+      <img src="/img/phone.webp" alt="" style="width:26%;right:2%;top:4%" class="float d2">
+      <img src="/img/bubble.webp" alt="" style="width:40%;left:0;bottom:4%" class="float d3">
+    </div>
+  </section>
+
+  <main class="card">
+    <ol class="steps">
+      <li class="step active" id="s1">
+        <div class="n">1</div>
+        <div>
+          <h2>سجّل إيميلك</h2>
+          <p>استخدم إيميل <b>حساب Google</b> المسجّل في جوالك الأندرويد (Gmail)، لأن Google Play يتعرّف عليك به.</p>
+          <form id="f" novalidate>
+            <label for="email">الإيميل</label>
+            <input id="email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="name@gmail.com" required dir="ltr">
+            <div class="row">
+              <div><label for="name">الاسم (اختياري)</label><input id="name" name="name" autocomplete="name"></div>
+              <div><label for="device">نوع جوالك (اختياري)</label><input id="device" name="device" placeholder="مثلًا Galaxy A51"></div>
+            </div>
+            <div class="err" id="err" role="alert"></div>
+            <button class="btn" type="submit" id="go">سجّلني مختبِرًا</button>
+          </form>
+        </div>
+      </li>
+      <li class="step locked" id="s2">
+        <div class="n">2</div>
+        <div>
+          <h2>انضم لمجموعة المختبِرين</h2>
+          <p>افتح المجموعة وسجّل الدخول بنفس الإيميل، ثم اضغط <b>«الانضمام إلى المجموعة»</b> (Join group).</p>
+          <a class="btn" id="groupBtn" href="#" target="_blank" rel="noopener" aria-disabled="true">فتح مجموعة المختبِرين</a>
+          <div class="hint" id="groupHint"></div>
+        </div>
+      </li>
+      <li class="step locked" id="s3">
+        <div class="n">3</div>
+        <div>
+          <h2>اقبل الدعوة وحمّل التطبيق</h2>
+          <p>بعد الانضمام بدقائق، افتح رابط الاختبار واضغط <b>«أصبح مختبِرًا»</b> (Become a tester)، ثم حمّل حَدَق من Google Play.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <a class="btn" id="optinBtn" href="#" target="_blank" rel="noopener" aria-disabled="true">قبول دعوة الاختبار</a>
+            <a class="btn ghost" id="playBtn" href="https://play.google.com/store/apps/details?id=dev.waal.hadaq" target="_blank" rel="noopener">فتح حَدَق في Google Play</a>
+          </div>
+          <div class="hint">يظهر التطبيق في المتجر للمختبِرين فقط. إذا لم يظهر، انتظر بضع دقائق ثم أعد فتح الرابط.</div>
+        </div>
+      </li>
+    </ol>
+  </main>
+</div>
+<footer>
+  بتسجيلك توافق على أن نحفظ إيميلك لإدارة الاختبار فقط · <a href="/privacy">سياسة الخصوصية</a> · <a href="/">حَدَق</a>
+</footer>
+
+<script>
+  const $ = (s) => document.querySelector(s);
+  let links = {};
+  const setLink = (el, url, hintEl, soonText) => {
+    if (url) { el.href = url; el.removeAttribute('aria-disabled'); if (hintEl) hintEl.textContent = ''; }
+    else { el.setAttribute('aria-disabled', 'true'); if (hintEl) hintEl.textContent = soonText; }
+  };
+  async function loadCount() {
+    try {
+      const j = await fetch('/api/testers/count').then((r) => r.json());
+      links = j;
+      $('#cnt').textContent = `انضم ${j.count} من ${j.target} مختبِرًا`;
+      $('#bar').style.width = Math.min(100, (j.count / j.target) * 100) + '%';
+    } catch { $('#cnt').textContent = 'انضم الآن'; }
+  }
+  function unlock() {
+    $('#s1').className = 'step done';
+    $('#s2').className = 'step active';
+    $('#s3').className = 'step active';
+    setLink($('#groupBtn'), links.group_url, $('#groupHint'), 'رابط المجموعة يُجهَّز الآن — سجّلنا إيميلك وسنرسل لك الرابط.');
+    setLink($('#optinBtn'), links.optin_url);
+    $('#groupBtn').focus();
+  }
+  $('#f').onsubmit = async (e) => {
+    e.preventDefault();
+    const email = $('#email').value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { $('#err').textContent = 'اكتب إيميلًا صحيحًا.'; $('#email').focus(); return; }
+    $('#err').textContent = ''; $('#go').textContent = '…';
+    try {
+      const r = await fetch('/api/testers', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name: $('#name').value, device: $('#device').value }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      links = { ...links, group_url: j.group_url, optin_url: j.optin_url };
+      try { localStorage.setItem('hadaq_tester', email); } catch {}
+      $('#go').innerHTML = '<span class="ok">✓ تم تسجيلك</span>';
+      $('#go').disabled = true;
+      await loadCount();
+      unlock();
+    } catch (err) {
+      $('#go').textContent = 'سجّلني مختبِرًا';
+      $('#err').textContent = err.message === 'rate' ? 'محاولات كثيرة، حاول بعد قليل.' : 'تعذّر التسجيل، حاول مرة أخرى.';
+    }
+  };
+  loadCount().then(() => {
+    let saved = null; try { saved = localStorage.getItem('hadaq_tester'); } catch {}
+    if (saved) { $('#email').value = saved; $('#go').innerHTML = '<span class="ok">✓ أنت مسجّل</span>'; $('#go').disabled = true; unlock(); }
+  });
+</script>
+</body>
+</html>
